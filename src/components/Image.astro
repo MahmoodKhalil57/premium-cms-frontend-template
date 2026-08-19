@@ -1,0 +1,29 @@
+---
+/**
+ * Drop-in for emdash/ui's <Image /> in this static template: resolves a
+ * MediaValue to the CMS's public media endpoint. URLs are absolute (via
+ * CMS_URL) so images work on the site's own domain, github.io, and local dev.
+ */
+import { CMS_URL } from "../config";
+import type { MediaValue } from "../lib/emdash";
+
+interface Props {
+	image?: MediaValue | string | null;
+	loading?: "lazy" | "eager";
+}
+
+const { image, loading = "lazy" } = Astro.props;
+const media: MediaValue | null =
+	typeof image === "string"
+		? (() => {
+				try {
+					return JSON.parse(image) as MediaValue;
+				} catch {
+					return null;
+				}
+			})()
+		: (image ?? null);
+const src = media?.id ? `${CMS_URL}/_emdash/api/media/file/${media.id}` : null;
+---
+
+{src && <img src={src} alt={media?.alt ?? ""} width={media?.width} height={media?.height} loading={loading} />}
