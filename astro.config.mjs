@@ -1,24 +1,11 @@
 // @ts-check
-import { defineConfig, fontProviders } from "astro/config";
+import { defineConfig } from "astro/config";
 
-// Static build, deployed to GitHub Pages. The platform reverse-proxies the
-// Pages origin on your site's own domain, so all URLs here are root-relative.
+// Fully static build, deployed to GitHub Pages — no server logic. Content
+// comes from the CMS's public /frontend-api feed at build time (see
+// src/lib/emdash.ts), and the platform reverse-proxies the Pages build on
+// the site's own domain.
 export default defineConfig({
 	output: "static",
-	fonts: [
-		{
-			provider: fontProviders.google(),
-			name: "Inter",
-			cssVariable: "--font-body",
-			weights: [400, 500, 600, 700],
-			fallbacks: ["sans-serif"],
-		},
-		{
-			provider: fontProviders.google(),
-			name: "JetBrains Mono",
-			cssVariable: "--font-mono",
-			weights: [400, 500],
-			fallbacks: ["monospace"],
-		},
-	],
+	devToolbar: { enabled: false },
 });

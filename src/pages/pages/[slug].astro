@@ -1,0 +1,24 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getEmDashCollection } from "../../lib/emdash";
+import { renderPortableText } from "../../lib/pt";
+
+export async function getStaticPaths() {
+	const { entries } = await getEmDashCollection("pages");
+	// `home` is the homepage body, rendered at `/` — not as a standalone page.
+	return entries
+		.filter((entry) => entry.id !== "home")
+		.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry: page } = Astro.props;
+const html = renderPortableText(page.data.content);
+---
+
+<Base title={page.data.title ?? page.id}>
+	<article>
+		<h1>{page.data.title}</h1>
+
+		<Fragment set:html={html} />
+	</article>
+</Base>

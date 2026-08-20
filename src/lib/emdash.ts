@@ -1,12 +1,11 @@
 /**
- * Build-time data layer for the PremiumCMS frontend template.
+ * Headless data layer for the PremiumCMS frontend template.
  *
- * The pages in this template are copied from the EmDash Astro theme, which
- * reads its content through the `emdash` package. This module provides the
- * same call surface, backed by the CMS instance's public content feed
- * (`/frontend-api/*`) at BUILD time — `astro build` pre-renders the pages
- * with real content. Pushing to main (or the platform dispatching the
- * deploy workflow) rebuilds with fresh content.
+ * The pages in this template are the official EmDash starter theme, with the
+ * `emdash` package's server calls replaced by this module: the same call
+ * surface, backed by the CMS instance's public feed (`/frontend-api/*`) at
+ * BUILD time. `astro build` pre-renders every page with real content; the
+ * result is plain static HTML served by GitHub Pages — no server logic.
  *
  * Every fetch is fail-soft: if the CMS is unreachable the build still
  * succeeds with empty content rather than failing the deploy.
@@ -32,11 +31,9 @@ export interface MediaValue {
 	filename?: string;
 }
 
-export interface ContentBylineCredit {
-	byline: {
-		displayName: string;
-		avatarMediaId?: string | null;
-	};
+export interface Term {
+	slug: string;
+	label: string;
 }
 
 export interface Entry {
@@ -51,7 +48,8 @@ export interface Entry {
 		content?: PortableTextBlock[];
 		featured_image?: MediaValue | null;
 		publishedAt?: Date | null;
-		bylines: ContentBylineCredit[];
+		/** Taxonomy name → terms, e.g. { tag: [...], category: [...] }. */
+		terms: Record<string, Term[]>;
 	};
 }
 
@@ -64,6 +62,7 @@ interface Row {
 	featured_image?: string;
 	published_at?: string;
 	created_at?: string;
+	terms?: Record<string, Term[]>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -103,18 +102,27 @@ function toEntry(row: Row): Entry {
 			content: parseJson<PortableTextBlock[]>(row.content),
 			featured_image: parseJson<MediaValue>(row.featured_image) ?? null,
 			publishedAt: published && !Number.isNaN(published.getTime()) ? published : null,
-			bylines: [],
+			terms: row.terms ?? {},
 		},
 	};
 }
+
+const collectionCache = new Map<string, Promise<Entry[]>>();
 
 export async function getEmDashCollection(
 	collection: string,
 	options?: { orderBy?: Record<string, string>; limit?: number },
 ): Promise<{ entries: Entry[]; cacheHint: Record<string, never> }> {
-	const limit = Math.min(options?.limit ?? 50, 50);
-	const data = await feed<{ items?: Row[] }>(`/frontend-api/${collection}.json?limit=${limit}`);
-	return { entries: (data?.items ?? []).map(toEntry), cacheHint: {} };
+	// One fetch per collection per build; pages slice what they need.
+	let promise = collectionCache.get(collection);
+	if (!promise) {
+		promise = feed<{ items?: Row[] }>(`/frontend-api/${collection}.json?limit=50`).then((data) =>
+			(data?.items ?? []).map(toEntry),
+		);
+		collectionCache.set(collection, promise);
+	}
+	const entries = await promise;
+	return { entries: options?.limit ? entries.slice(0, options.limit) : entries, cacheHint: {} };
 }
 
 export async function getSiteSettings(): Promise<{ title?: string; tagline?: string }> {
@@ -133,9 +141,9 @@ let menusPromise: Promise<Record<string, { items: Array<{ url: string; label: st
 
 function fetchMenus(): Promise<Record<string, { items: Array<{ url: string; label: string; target?: string }> }>> {
 	menusPromise ??= (async () => {
-		const data = await feed<{ menus?: Record<string, { items: Array<{ url: string; label: string; target?: string }> }> }>(
-			"/frontend-api/layout.json",
-		);
+		const data = await feed<{
+			menus?: Record<string, { items: Array<{ url: string; label: string; target?: string }> }>;
+		}>("/frontend-api/layout.json");
 		return data?.menus ?? {};
 	})();
 	return menusPromise;
@@ -151,18 +159,32 @@ export async function getMenu(
 			items: [
 				{ url: "/", label: "Home" },
 				{ url: "/posts", label: "Posts" },
-				{ url: "/search", label: "Search" },
 			],
 		};
 	}
 	return null;
 }
 
-/** Taxonomy terms need an authenticated API; the template renders without tags. */
+/** Terms per entry, from the feed's attached taxonomy data. */
 export async function getTermsForEntries(
-	_collection: string,
-	_entryIds: string[],
-	_taxonomy: string,
-): Promise<Map<string, Array<{ slug: string; label: string }>>> {
-	return new Map();
+	collection: string,
+	entryIds: string[],
+	taxonomy: string,
+): Promise<Map<string, Term[]>> {
+	const { entries } = await getEmDashCollection(collection);
+	const map = new Map<string, Term[]>();
+	for (const entry of entries) {
+		if (entryIds.includes(entry.data.id)) map.set(entry.data.id, entry.data.terms[taxonomy] ?? []);
+	}
+	return map;
+}
+
+/** All terms of a taxonomy used by a collection's published entries. */
+export async function getUsedTerms(collection: string, taxonomy: string): Promise<Term[]> {
+	const { entries } = await getEmDashCollection(collection);
+	const seen = new Map<string, Term>();
+	for (const entry of entries) {
+		for (const term of entry.data.terms[taxonomy] ?? []) seen.set(term.slug, term);
+	}
+	return [...seen.values()];
 }

@@ -5,17 +5,17 @@ export interface MediaReference {
 	url?: string;
 }
 
-export interface BlogSiteIdentitySettings {
+export interface StarterSiteIdentitySettings {
 	title?: string;
 	tagline?: string;
 	logo?: MediaReference;
 	favicon?: MediaReference;
 }
 
-const DEFAULT_SITE_TITLE = "My Blog";
-const DEFAULT_SITE_TAGLINE = "Thoughts, stories, and ideas.";
+const DEFAULT_SITE_TITLE = "My Site";
+const DEFAULT_SITE_TAGLINE = "Built with EmDash";
 
-export function resolveBlogSiteIdentity(settings?: BlogSiteIdentitySettings) {
+export function resolveStarterSiteIdentity(settings?: StarterSiteIdentitySettings) {
 	return {
 		siteTitle: settings?.title ?? DEFAULT_SITE_TITLE,
 		siteTagline: settings?.tagline ?? DEFAULT_SITE_TAGLINE,

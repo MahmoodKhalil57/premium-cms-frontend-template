@@ -1,0 +1,33 @@
+---
+import Base from "../../layouts/Base.astro";
+import Image from "../../components/Image.astro";
+import { getEmDashCollection, getUsedTerms } from "../../lib/emdash";
+
+export async function getStaticPaths() {
+	const terms = await getUsedTerms("posts", "tag");
+	return terms.map((term) => ({ params: { slug: term.slug }, props: { term } }));
+}
+
+const { term } = Astro.props;
+const { entries } = await getEmDashCollection("posts");
+const posts = entries.filter((p) => (p.data.terms.tag ?? []).some((t) => t.slug === term.slug));
+---
+
+<Base title={`Posts tagged ${term.label}`} description={`Posts tagged ${term.label}`}>
+	<h1>#{term.label}</h1>
+	<p>{posts.length} {posts.length === 1 ? "post" : "posts"}</p>
+
+	<ul>
+		{
+			posts.map((post) => (
+				<li>
+					<a href={`/posts/${post.id}`}>
+						{post.data.featured_image && <Image image={post.data.featured_image} />}
+						<h2>{post.data.title}</h2>
+					</a>
+					{post.data.excerpt && <p>{post.data.excerpt}</p>}
+				</li>
+			))
+		}
+	</ul>
+</Base>

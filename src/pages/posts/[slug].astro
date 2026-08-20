@@ -1,0 +1,58 @@
+---
+import Base from "../../layouts/Base.astro";
+import Image from "../../components/Image.astro";
+import { getEmDashCollection } from "../../lib/emdash";
+import { renderPortableText } from "../../lib/pt";
+
+export async function getStaticPaths() {
+	const { entries } = await getEmDashCollection("posts");
+	return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry: post } = Astro.props;
+const html = renderPortableText(post.data.content);
+const tags = post.data.terms.tag ?? [];
+const categories = post.data.terms.category ?? [];
+---
+
+<Base title={post.data.title ?? post.id} description={post.data.excerpt}>
+	<article>
+		{post.data.featured_image && <Image image={post.data.featured_image} loading="eager" />}
+
+		<h1>{post.data.title}</h1>
+
+		{
+			post.data.publishedAt && (
+				<time datetime={post.data.publishedAt.toISOString()}>
+					{post.data.publishedAt.toLocaleDateString("en-US", {
+						year: "numeric",
+						month: "long",
+						day: "numeric",
+					})}
+				</time>
+			)
+		}
+
+		{
+			categories.length > 0 && (
+				<div>
+					{categories.map((c) => (
+						<a href={`/category/${c.slug}`}>{c.label}</a>
+					))}
+				</div>
+			)
+		}
+
+		<Fragment set:html={html} />
+
+		{
+			tags.length > 0 && (
+				<div>
+					{tags.map((t) => (
+						<a href={`/tag/${t.slug}`}>{t.label}</a>
+					))}
+				</div>
+			)
+		}
+	</article>
+</Base>
