@@ -1,12 +1,9 @@
 {
-	"$schema": "https://emdashcms.com/seed.schema.json",
+	"$schema": "./schemas/seed.schema.json",
 	"version": "1",
 	"meta": {
 		"name": "Site seed",
-		"description": "Content-as-code for this site. Applied to the CMS on every deploy (update-on-conflict), so edits here are living migrations. Use {\"$env\": \"NAME\"} for values that must come from the workflow environment instead of the repo."
+		"description": "Content-as-code for this site, applied on every deploy (update-on-conflict). Root settings live here; content entries live one-per-file under seed/content/<collection>/<slug>.json."
 	},
-	"content": {
-		"pages": [],
-		"posts": []
-	}
+	"content": {}
 }

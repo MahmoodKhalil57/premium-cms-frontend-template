@@ -1,0 +1,73 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "premiumcms-seed-root",
+	"title": "PremiumCMS seed root document",
+	"description": "The root of this site's content-as-code seed. Content entries live in seed/content/<collection>/<slug>.json (one file per entry, validated by entry.schema.json); the apply script composes them into this document under `content` before applying. Applied with update-on-conflict — a living migration.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"$schema": { "type": "string" },
+		"version": { "type": "string", "default": "1" },
+		"meta": {
+			"type": "object",
+			"properties": {
+				"name": { "type": "string" },
+				"description": { "type": "string" },
+				"author": { "type": "string" }
+			},
+			"additionalProperties": true
+		},
+		"settings": {
+			"type": "object",
+			"description": "Site settings — title and tagline drive the header, footer, and /frontend-api/site.json.",
+			"properties": {
+				"title": { "$ref": "entry.schema.json#/definitions/stringOrEnv" },
+				"tagline": { "$ref": "entry.schema.json#/definitions/stringOrEnv" }
+			},
+			"additionalProperties": true
+		},
+		"collections": {
+			"type": "array",
+			"description": "Collection/schema definitions. Usually omitted — instances already carry the golden schema; include only when adding collections or fields.",
+			"items": {
+				"type": "object",
+				"required": ["slug"],
+				"properties": {
+					"slug": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+					"label": { "type": "string" },
+					"labelSingular": { "type": "string" },
+					"supports": { "type": "array", "items": { "type": "string" } },
+					"commentsEnabled": { "type": "boolean" },
+					"fields": { "type": "array", "items": { "type": "object" } }
+				},
+				"additionalProperties": true
+			}
+		},
+		"taxonomies": { "type": "array", "items": { "type": "object" } },
+		"bylines": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["id", "slug", "displayName"],
+				"properties": {
+					"id": { "type": "string" },
+					"slug": { "type": "string" },
+					"displayName": { "type": "string" }
+				},
+				"additionalProperties": true
+			}
+		},
+		"menus": { "type": "array", "items": { "type": "object" } },
+		"widgetAreas": { "type": "array", "items": { "type": "object" } },
+		"sections": { "type": "array", "items": { "type": "object" } },
+		"redirects": { "type": "array", "items": { "type": "object" } },
+		"content": {
+			"type": "object",
+			"description": "Inline content entries (collection → entries). Prefer one file per entry under seed/content/ instead; both are merged.",
+			"additionalProperties": {
+				"type": "array",
+				"items": { "$ref": "entry.schema.json" }
+			}
+		}
+	}
+}

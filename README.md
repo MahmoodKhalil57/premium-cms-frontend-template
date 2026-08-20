@@ -26,15 +26,26 @@ one site.
 
 ## Content as code: the seed
 
-`seed/seed.json` is this site's content migration. On every deploy, the
-workflow applies it to your CMS **before** building (update-on-conflict,
-matched by slug), then pre-renders against the result — so committing a
-content change and pushing is a complete publish. Keep evolving it through
-the development cycle: pages, posts, settings, menus, taxonomies all
-belong here. Anything sensitive stays out of the repo — write
-`{"$env": "NAME"}` in the seed and set `NAME` in the workflow environment;
-the apply step authenticates with the `CMS_SEED_TOKEN` repository secret
-(set automatically when the platform created this repo).
+`seed/` is this site's content migration. On every deploy, the workflow
+composes it and applies it to your CMS **before** building
+(update-on-conflict, matched by slug), then pre-renders against the
+result — so committing a content change and pushing is a complete publish.
+
+The seed is split so it stays reviewable as it grows:
+
+| File                                    | What it holds                            |
+| --------------------------------------- | ---------------------------------------- |
+| `seed/seed.json`                        | Root: `meta`, `settings` (title, tagline) |
+| `seed/content/<collection>/<slug>.json` | One content entry per file               |
+| `seed/schemas/*.schema.json`            | JSON Schemas — every seed file's `$schema` points at these, so your IDE validates and autocompletes them |
+
+An entry file may omit `slug` (defaults to its filename) and `id`
+(defaults to `<collection>-<slug>`). Files apply in filename order.
+
+Anything sensitive stays out of the repo — write `{"$env": "NAME"}` as a
+value and set `NAME` in the workflow environment; the apply step
+authenticates with the `CMS_SEED_TOKEN` repository secret (set
+automatically when the platform created this repo).
 
 Content created directly in the CMS admin is untouched unless the seed
 uses the same slug — the seed owns what it names, the admin owns the rest.
