@@ -24,6 +24,21 @@ one site.
   still succeeds with the identity baked into `src/config.ts` and an empty
   post list — a deploy never breaks because of a network blip.
 
+## Content as code: the seed
+
+`seed/seed.json` is this site's content migration. On every deploy, the
+workflow applies it to your CMS **before** building (update-on-conflict,
+matched by slug), then pre-renders against the result — so committing a
+content change and pushing is a complete publish. Keep evolving it through
+the development cycle: pages, posts, settings, menus, taxonomies all
+belong here. Anything sensitive stays out of the repo — write
+`{"$env": "NAME"}` in the seed and set `NAME` in the workflow environment;
+the apply step authenticates with the `CMS_SEED_TOKEN` repository secret
+(set automatically when the platform created this repo).
+
+Content created directly in the CMS admin is untouched unless the seed
+uses the same slug — the seed owns what it names, the admin owns the rest.
+
 ## Editing
 
 | What                 | Where                                              |
