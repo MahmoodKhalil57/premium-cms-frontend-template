@@ -282,6 +282,10 @@
 				"css": {
 					"type": "string"
 				},
+				"editCss": {
+					"type": "string",
+					"description": "Builder-authored style overrides, rendered after css."
+				},
 				"project": {
 					"type": [
 						"object",

@@ -65,9 +65,10 @@ export function renderPortableText(blocks: PortableTextBlock[] | undefined): str
 		}
 		if (block._type === "grapesBlock") {
 			flushList();
-			const b = block as { html?: string; css?: string };
+			const b = block as { html?: string; css?: string; editCss?: string };
 			if (b.html) {
-				out.push(`<div class="grapes-block">${b.css ? `<style>${b.css}</style>` : ""}${b.html}</div>`);
+				const styles = [b.css, b.editCss].filter(Boolean).join("\n");
+				out.push(`<div class="grapes-block">${styles ? `<style>${styles}</style>` : ""}${b.html}</div>`);
 			}
 			continue;
 		}
