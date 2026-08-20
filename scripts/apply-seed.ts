@@ -45,6 +45,19 @@ if (!CMS_URL) {
 const seed = (await rootFile.json()) as Record<string, unknown>;
 const content: Record<string, unknown[]> = { ...((seed.content as Record<string, unknown[]>) ?? {}) };
 
+// Layout sections (reusable designer-editable blocks) live one-per-file in
+// seed/content-free seed/sections/<slug>.json; merged into root `sections`.
+const sections: unknown[] = Array.isArray(seed.sections) ? [...(seed.sections as unknown[])] : [];
+const sectionFiles = (await readdir(new URL("sections/", seedDir)).catch(() => []) as string[])
+	.filter((f) => f.endsWith(".json"))
+	.sort();
+for (const file of sectionFiles) {
+	const section = (await Bun.file(new URL(`sections/${file}`, seedDir)).json()) as Record<string, unknown>;
+	section.slug ??= file.replace(/\.json$/, "");
+	sections.push(section);
+}
+if (sections.length > 0) seed.sections = sections;
+
 let fromFiles = 0;
 const collections = await readdir(new URL("content/", seedDir), { withFileTypes: true }).catch(() => []);
 for (const dir of collections) {
@@ -83,7 +96,7 @@ function resolve(node: unknown, path: string): unknown {
 
 const doc = resolve(seed, "$") as Record<string, unknown>;
 const total = Object.values(content).reduce((n, entries) => n + entries.length, 0);
-console.log(`apply-seed: composed ${total} entries (${fromFiles} from files) across ${Object.keys(content).length} collections.`);
+console.log(`apply-seed: composed ${total} entries (${fromFiles} from files) across ${Object.keys(content).length} collections, ${sections.length} sections.`);
 
 const res = await fetch(`${CMS_URL}/seed-api`, {
 	method: "POST",

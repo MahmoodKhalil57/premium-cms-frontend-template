@@ -5,5 +5,63 @@
 		"name": "Site seed",
 		"description": "Content-as-code for this site, applied on every deploy (update-on-conflict). Root settings live here; content entries live one-per-file under seed/content/<collection>/<slug>.json."
 	},
+	"menus": [
+		{
+			"name": "primary",
+			"label": "Primary",
+			"items": [
+				{
+					"type": "custom",
+					"label": "Home",
+					"url": "/"
+				},
+				{
+					"type": "custom",
+					"label": "Posts",
+					"url": "/posts"
+				},
+				{
+					"type": "custom",
+					"label": "Search",
+					"url": "/search"
+				}
+			]
+		}
+	],
+	"redirects": [
+		{
+			"source": "/admin",
+			"destination": "/_emdash/admin",
+			"type": 302
+		}
+	],
+	"widgetAreas": [
+		{
+			"name": "footer",
+			"label": "Footer widgets",
+			"description": "Rendered in the footer's widget column.",
+			"widgets": [
+				{
+					"type": "content",
+					"title": "About",
+					"content": [
+						{
+							"_type": "block",
+							"style": "normal",
+							"_key": "w0",
+							"markDefs": [],
+							"children": [
+								{
+									"_type": "span",
+									"_key": "w1",
+									"text": "Edit this widget under Manage → Widgets, or replace it in seed/seed.json."
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	],
 	"content": {}
 }

@@ -1,5 +1,6 @@
 ---
 import { getMenu, getEmDashCollection, getSiteSettings } from "../lib/emdash";
+import { getLayout, renderLayoutSection } from "../lib/layout";
 import { Font } from "astro:assets";
 import { resolveBlogSiteIdentity } from "../utils/site-identity";
 import "../styles/tokens.css";
@@ -48,6 +49,15 @@ const socialMenu = await getMenu("social");
 // Fetch pages for footer
 const { entries: pages } = await getEmDashCollection("pages");
 
+// Designer-owned chrome: the `site-header` / `site-footer` SECTIONS
+// (Manage → Sections) render instead of the built-in header/footer when
+// they exist. Their [data-menu] / [data-widget-area] / [data-site-title] /
+// [data-theme-switcher] markers are filled from the CMS at build time.
+const layout = await getLayout();
+const site = { title: siteTitle, tagline: siteTagline };
+const headerHtml = renderLayoutSection(layout, "site-header", site);
+const footerHtml = renderLayoutSection(layout, "site-footer", site);
+
 // Static build: no session, so no admin link in the nav. The admin lives
 // at /_emdash/admin on the same domain.
 const isLoggedIn = false;
@@ -85,6 +95,7 @@ const isLoggedIn = false;
 		</script>
 	</head>
 	<body>
+		{headerHtml ? <div class="layout-slot" set:html={headerHtml} /> : (
 		<header class="site-header">
 			<nav class="nav">
 				<a href="/" class="site-title">
@@ -113,11 +124,13 @@ const isLoggedIn = false;
 				}
 			</nav>
 		</header>
+		)}
 
 		<main>
 			<slot />
 		</main>
 
+		{footerHtml ? <div class="layout-slot" set:html={footerHtml} /> : (
 		<footer class="site-footer">
 			<div class="footer-inner">
 				<div class="footer-grid">
@@ -252,6 +265,7 @@ const isLoggedIn = false;
 				</div>
 			</div>
 		</footer>
+		)}
 
 		<script>
 			// Theme switcher
@@ -413,6 +427,13 @@ const isLoggedIn = false;
 				::selection {
 					background: var(--color-brand);
 					color: var(--color-on-brand);
+				}
+
+				/* Layout sections render through wrappers; make them transparent
+				   to the layout so position:sticky inside them works. */
+				.layout-slot,
+				.layout-slot .grapes-block {
+					display: contents;
 				}
 			}
 		</style>

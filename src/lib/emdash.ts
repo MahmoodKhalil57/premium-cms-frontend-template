@@ -126,10 +126,26 @@ export async function getSiteSettings(): Promise<{ title?: string; tagline?: str
 	};
 }
 
-/** Menus are static in the template — edit the arrays to change navigation. */
+/** Menus come from the CMS Menus manager, with a static default when the
+ *  CMS has none (or is unreachable at build time). */
+let menusPromise: Promise<Record<string, { items: Array<{ url: string; label: string; target?: string }> }>> | null =
+	null;
+
+function fetchMenus(): Promise<Record<string, { items: Array<{ url: string; label: string; target?: string }> }>> {
+	menusPromise ??= (async () => {
+		const data = await feed<{ menus?: Record<string, { items: Array<{ url: string; label: string; target?: string }> }> }>(
+			"/frontend-api/layout.json",
+		);
+		return data?.menus ?? {};
+	})();
+	return menusPromise;
+}
+
 export async function getMenu(
 	name: string,
 ): Promise<{ items: Array<{ url: string; label: string; target?: string }> } | null> {
+	const menus = await fetchMenus();
+	if (menus[name]?.items?.length) return menus[name];
 	if (name === "primary") {
 		return {
 			items: [
