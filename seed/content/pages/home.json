@@ -1,0 +1,17 @@
+{
+	"$schema": "../../schemas/entry.schema.json",
+	"id": "page-home",
+	"status": "published",
+	"data": {
+		"title": "Home",
+		"content": [
+			{
+				"_type": "grapesBlock",
+				"_key": "home-hero",
+				"html": "<section class=\"pb-hero\">\n  <h1 class=\"pb-hero-title\">Welcome to your new site</h1>\n  <p class=\"pb-hero-sub\">This homepage is a CMS page: open it in the admin, click the designed section, and reshape it visually with the page builder &mdash; or edit this file in seed/content/pages/home.json. Delete the page to fall back to the blog-style home.</p>\n  <div class=\"pb-hero-actions\">\n    <a href=\"/posts\" class=\"pb-btn\">Read the posts</a>\n    <a href=\"/_emdash/admin\" class=\"pb-btn-quiet\">Open the admin</a>\n  </div>\n</section>",
+				"css": ".pb-hero{font-family:var(--font-body, system-ui, sans-serif);color:var(--color-text, #1a1a1a);max-width:var(--wide-width, 1200px);margin:0 auto;padding:5rem 1.5rem;text-align:center}\n.pb-hero-title{font-family:var(--font-heading, inherit);font-size:clamp(2rem, 5vw, 3.25rem);font-weight:700;letter-spacing:-0.02em;line-height:1.15;margin:0 0 1rem}\n.pb-hero-sub{font-size:1.125rem;color:var(--color-text-secondary, #525252);max-width:56ch;margin:0 auto 2rem;line-height:1.7}\n.pb-hero-actions{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}\n.pb-btn{display:inline-block;padding:0.75rem 1.5rem;background:var(--color-brand, #0066cc);color:var(--color-on-brand, #fff);border-radius:var(--radius, 4px);text-decoration:none;font-size:0.9375rem;font-weight:500}\n.pb-btn:hover{background:var(--color-brand-hover, #0052a3)}\n.pb-btn-quiet{display:inline-block;padding:0.75rem 1.5rem;color:var(--color-text-secondary, #525252);text-decoration:none;font-size:0.9375rem}\n.pb-btn-quiet:hover{color:var(--color-text, #1a1a1a)}",
+				"project": null
+			}
+		]
+	}
+}
