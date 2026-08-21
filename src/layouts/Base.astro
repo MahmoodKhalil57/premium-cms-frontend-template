@@ -2,6 +2,7 @@
 import { getMenu, getSiteSettings } from "../lib/emdash";
 import { getLayout, renderLayoutSection, fillLayoutSlots } from "../lib/layout";
 import { resolveStarterSiteIdentity } from "../utils/site-identity";
+import { CMS_URL } from "../config";
 
 interface Props {
 	title: string;
@@ -43,6 +44,8 @@ const footerWidgets = fillLayoutSlots('<div data-widget-area="sidebar"></div>', 
 		<meta property="og:title" content={pageTitle ?? title} />
 		{pageDescription && <meta property="og:description" content={pageDescription} />}
 		{image && <meta property="og:image" content={image} />}
+		{/* Color scheme applied in the CMS (Admin → Color schemes): tokens + base layer, served live. */}
+		{CMS_URL && <link rel="stylesheet" href={`${CMS_URL}/frontend-api/theme.css`} />}
 		<script is:inline>
 			// Apply an explicit theme choice immediately (shared cookie with the
 			// CMS-rendered pages); harmless when the design has no theming.
