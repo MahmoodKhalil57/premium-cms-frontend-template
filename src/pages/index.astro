@@ -1,5 +1,6 @@
 ---
 import Base from "../layouts/Base.astro";
+import { CMS_URL } from "../config";
 import Image from "../components/Image.astro";
 import PostCard from "../components/PostCard.astro";
 import { getEmDashCollection, getSiteSettings, getTermsForEntries } from "../lib/emdash";
@@ -40,7 +41,7 @@ const formatDate = (date: Date | null | undefined) => (date ? date.toLocaleDateS
 		<section class="empty-state">
 			<h2>No posts yet</h2>
 			<p>Create your first post in the admin panel.</p>
-			<a href="/_emdash/admin/content/posts/new" class="btn">Create a post</a>
+			<a href={`${CMS_URL}/_emdash/admin/content/posts/new`} class="btn">Create a post</a>
 		</section>
 	) : (
 		<div class="home-content">

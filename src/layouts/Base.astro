@@ -78,7 +78,7 @@ const cms = await cmsFragments(Astro, { title: fullTitle, description: pageDescr
 			<nav class="nav">
 				<a href="/" class="site-title">{siteTitle}</a>
 				<div class="nav-right">
-					<form class="site-search-form" action="/search" method="get" role="search">
+					<form class="site-search-form" action={`${CMS_URL}/search`} method="get" role="search">
 						<input type="search" name="q" placeholder="Search..." aria-label="Search" />
 					</form>
 					<div class="nav-links">
@@ -121,7 +121,7 @@ const cms = await cmsFragments(Astro, { title: fullTitle, description: pageDescr
 									<a href={item.url} target={item.target} rel={item.target === "_blank" ? "noopener noreferrer" : undefined}>{item.label}</a>
 								</li>
 							))}
-							<li><a href="/rss.xml">RSS Feed</a></li>
+							<li><a href={`${CMS_URL}/rss.xml`}>RSS Feed</a></li>
 						</ul>
 					</div>
 					<div class="footer-widgets-section">

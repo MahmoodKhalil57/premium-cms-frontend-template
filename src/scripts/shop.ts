@@ -204,7 +204,7 @@ function renderCart(): void {
 	if (!root) return;
 	const lines = readCart();
 	if (lines.length === 0) {
-		root.innerHTML = `<p class="ec-cart__empty">Your cart is empty. <a href="/products">Browse products</a></p>`;
+		root.innerHTML = `<p class="ec-cart__empty">Your cart is empty. <a href="${BASE}/products">Browse products</a></p>`;
 		return;
 	}
 	const subtotal = lines.reduce((n, l) => n + toMinor(l.price) * l.quantity, 0);
@@ -215,7 +215,7 @@ function renderCart(): void {
 				${lines
 					.map(
 						(l) => `<tr data-line="${esc(l.productId)}">
-					<td><a href="/products/${esc(l.slug)}">${esc(l.title)}</a></td>
+					<td><a href="${BASE}/products/${esc(l.slug)}">${esc(l.title)}</a></td>
 					<td><input type="number" min="0" value="${l.quantity}" data-line-qty="${esc(l.productId)}" aria-label="Quantity for ${esc(l.title)}" /></td>
 					<td>${money(toMinor(l.price) * l.quantity)}</td>
 					<td><button type="button" class="ec-link" data-line-remove="${esc(l.productId)}">Remove</button></td>
