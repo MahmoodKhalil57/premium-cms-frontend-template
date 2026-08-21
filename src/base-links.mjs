@@ -14,11 +14,15 @@ import { join } from "node:path";
 const ATTRS = ["href", "src", "action", "poster", "data-src", "content"];
 
 export default function baseLinks() {
+	let configuredBase = "/";
 	return {
 		name: "premiumcms-base-links",
 		hooks: {
+			"astro:config:done": ({ config }) => {
+				configuredBase = config.base || "/";
+			},
 			"astro:build:done": async ({ dir, logger }) => {
-				const base = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
+				const base = configuredBase.replace(/\/+$/, "");
 				if (!base) return;
 				const root = dir instanceof URL ? decodeURIComponent(dir.pathname) : String(dir);
 				const files = [];
