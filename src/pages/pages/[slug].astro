@@ -1,10 +1,7 @@
 ---
 import Base from "../../layouts/Base.astro";
 import { getEmDashCollection } from "../../lib/emdash";
-import { renderPortableText } from "../../lib/pt";
-import { fillLayoutSlots, getLayout } from "../../lib/layout";
-import { getSiteSettings } from "../../lib/emdash";
-import { resolveStarterSiteIdentity } from "../../utils/site-identity";
+import CmsContent from "../../components/CmsContent.astro";
 
 export async function getStaticPaths() {
 	const { entries } = await getEmDashCollection("pages");
@@ -14,9 +11,6 @@ export async function getStaticPaths() {
 
 const page = Astro.props.entry ?? (await getEmDashCollection("pages")).entries.find((e) => e.id === Astro.params.slug && e.id !== "home");
 if (!page) return Astro.redirect("/404");
-const [layout, settings] = await Promise.all([getLayout(), getSiteSettings()]);
-const { siteTitle, siteTagline } = resolveStarterSiteIdentity(settings);
-const html = fillLayoutSlots(renderPortableText(page.data.content), layout, { title: siteTitle, tagline: siteTagline });
 ---
 
 <Base title={page.data.title ?? page.id} content={{ collection: "pages", id: page.data.id, slug: page.id }}>
@@ -25,7 +19,7 @@ const html = fillLayoutSlots(renderPortableText(page.data.content), layout, { ti
 			<h1 class="page-title">{page.data.title}</h1>
 		</header>
 		<div class="page-content">
-			<Fragment set:html={html} />
+			<CmsContent value={page.data.content} collection="pages" entryId={page.data.id} slug={page.id} />
 		</div>
 	</article>
 </Base>

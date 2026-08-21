@@ -2,26 +2,23 @@
 import Base from "../layouts/Base.astro";
 import { CMS_URL } from "../config";
 import Image from "../components/Image.astro";
+import CmsContent from "../components/CmsContent.astro";
 import PostCard from "../components/PostCard.astro";
 import { getEmDashCollection, getSiteSettings, getTermsForEntries } from "../lib/emdash";
-import { renderPortableText } from "../lib/pt";
-import { fillLayoutSlots, getLayout } from "../lib/layout";
 import { getReadingTime } from "../utils/reading-time";
 import { resolveStarterSiteIdentity } from "../utils/site-identity";
 
 const POSTS_PER_PAGE = 7;
-const [{ entries: allPosts }, { entries: pages }, settings, layout] = await Promise.all([
+const [{ entries: allPosts }, { entries: pages }, settings] = await Promise.all([
 	getEmDashCollection("posts"),
 	getEmDashCollection("pages", { limit: 50 }),
 	getSiteSettings(),
-	getLayout(),
 ]);
 const { siteTitle, siteTagline } = resolveStarterSiteIdentity(settings);
 
 // Designer-owned homepage: a CMS page with slug `home` IS the homepage (page
 // builder). Without one, the theme's featured post + latest grid renders.
 const homePage = pages.find((p) => p.id === "home");
-const homeHtml = homePage ? fillLayoutSlots(renderPortableText(homePage.data.content), layout, { title: siteTitle, tagline: siteTagline }) : "";
 
 const posts = [...allPosts].sort((a, b) => (b.data.publishedAt?.getTime() ?? 0) - (a.data.publishedAt?.getTime() ?? 0));
 const visiblePosts = posts.slice(0, POSTS_PER_PAGE);
@@ -35,8 +32,8 @@ const formatDate = (date: Date | null | undefined) => (date ? date.toLocaleDateS
 ---
 
 <Base title={siteTitle} description={siteTagline}>
-	{homeHtml ? (
-		<Fragment set:html={homeHtml} />
+	{homePage ? (
+		<CmsContent value={homePage.data.content} collection="pages" entryId={homePage.data.id} slug="home" />
 	) : posts.length === 0 ? (
 		<section class="empty-state">
 			<h2>No posts yet</h2>

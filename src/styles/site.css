@@ -1930,3 +1930,7 @@
 .toc-content .toc-sub { padding-inline-start: 0.75rem; }
 .toc-content a { color: var(--color-text-secondary); text-decoration: none; font-size: var(--font-size-sm); }
 .toc-content a:hover { color: var(--color-brand); }
+
+/* Icon buttons must not inherit the color-scheme base layer's button padding/shadow. */
+.theme-btn, .theme-btn:hover { padding: 0; box-shadow: none; border: 0; }
+.theme-btn.active { box-shadow: var(--shadow-sm); }
