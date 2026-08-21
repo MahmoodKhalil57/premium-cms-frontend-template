@@ -3,6 +3,7 @@ import { getEmDashCollection, getMenu, getSiteSettings } from "../lib/emdash";
 import { getLayout, renderLayoutSection, fillLayoutSlots } from "../lib/layout";
 import { resolveStarterSiteIdentity } from "../utils/site-identity";
 import { CMS_URL } from "../config";
+import { cmsFragments } from "../lib/cms";
 import "../styles/site.css";
 import "../styles/theme.css";
 
@@ -12,9 +13,12 @@ interface Props {
 	description?: string | null;
 	image?: string | null;
 	canonical?: string | null;
+	type?: "website" | "article";
+	/** Content reference, so the platform\'s editing tools know what the page shows. */
+	content?: { collection: string; id: string; slug?: string | null };
 }
 
-const { title, pageTitle, description, image, canonical } = Astro.props;
+const { title, pageTitle, description, image, canonical, type = "website", content } = Astro.props;
 const { siteTitle, siteTagline } = resolveStarterSiteIdentity(await getSiteSettings());
 const fullTitle = title.includes(siteTitle) ? title : `${title} — ${siteTitle}`;
 const pageDescription = description ?? siteTagline;
@@ -36,6 +40,8 @@ const footerHtml = renderLayoutSection(layout, "site-footer", site);
 
 // Built-in footer shows the `sidebar` widget area (Manage → Widgets).
 const footerWidgets = fillLayoutSlots('<div data-widget-area="sidebar"></div>', layout, site);
+// Platform contributions (empty on GitHub Pages; SEO/toolbar/plugins when PremiumCMS hosts the site).
+const cms = await cmsFragments(Astro, { title: fullTitle, description: pageDescription, image, canonical, type, content });
 ---
 
 <!doctype html>
@@ -50,7 +56,8 @@ const footerWidgets = fillLayoutSlots('<div data-widget-area="sidebar"></div>', 
 		{pageDescription && <meta property="og:description" content={pageDescription} />}
 		{image && <meta property="og:image" content={image} />}
 		{/* Color scheme applied in the CMS (Admin → Color schemes): tokens + base layer, served live. */}
-		{CMS_URL && <link rel="stylesheet" href={`${CMS_URL}/frontend-api/theme.css`} />}
+		<link rel="stylesheet" href={`${CMS_URL}/frontend-api/theme.css`} />
+		<Fragment set:html={cms.head} />
 		<script is:inline>
 			// Apply an explicit theme choice immediately (shared cookie with the
 			// CMS-rendered pages); harmless when the design has no theming.
@@ -65,6 +72,7 @@ const footerWidgets = fillLayoutSlots('<div data-widget-area="sidebar"></div>', 
 		</script>
 	</head>
 	<body>
+		<Fragment set:html={cms.bodyStart} />
 		{headerHtml ? <div class="layout-slot" set:html={headerHtml} /> : (
 		<header class="site-header">
 			<nav class="nav">
@@ -174,6 +182,8 @@ const footerWidgets = fillLayoutSlots('<div data-widget-area="sidebar"></div>', 
 				});
 			}
 		</script>
+
+		<Fragment set:html={cms.bodyEnd} />
 
 		<style is:global>
 			/* Forms (premium-forms plugin) — minimal, inherits the site's type/colours. */

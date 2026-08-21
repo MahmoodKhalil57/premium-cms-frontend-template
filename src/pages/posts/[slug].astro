@@ -25,7 +25,7 @@ const otherPosts = [...all]
 const otherTags = await getTermsForEntries("posts", otherPosts.map((p) => p.data.id), "tag");
 ---
 
-<Base title={post.data.title ?? post.id} description={post.data.excerpt}>
+<Base title={post.data.title ?? post.id} description={post.data.excerpt} type="article" content={{ collection: "posts", id: post.data.id, slug: post.id }}>
 	<article class="article">
 		{post.data.featured_image && (
 			<div class="article-hero">

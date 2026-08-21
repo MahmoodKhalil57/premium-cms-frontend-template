@@ -18,7 +18,7 @@ const { siteTitle, siteTagline } = resolveStarterSiteIdentity(settings);
 const html = fillLayoutSlots(renderPortableText(page.data.content), layout, { title: siteTitle, tagline: siteTagline });
 ---
 
-<Base title={page.data.title ?? page.id}>
+<Base title={page.data.title ?? page.id} content={{ collection: "pages", id: page.data.id, slug: page.id }}>
 	<article class="page-article">
 		<header class="page-header">
 			<h1 class="page-title">{page.data.title}</h1>

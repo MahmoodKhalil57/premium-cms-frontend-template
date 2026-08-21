@@ -201,3 +201,8 @@ export async function getUsedTerms(collection: string, taxonomy: string): Promis
 	}
 	return [...seen.values()];
 }
+
+/** Raw layout feed (menus, widget areas, sections) — the platform swaps this for a direct read when it hosts the site. */
+export async function fetchLayoutData(): Promise<Record<string, never> | { menus?: Record<string, unknown>; widgetAreas?: Record<string, unknown>; sections?: Record<string, unknown> } | null> {
+	return feed("/frontend-api/layout.json");
+}

@@ -12,7 +12,7 @@
  * Markers must be empty; designers move and restyle the containers freely,
  * the CMS owns what goes inside them.
  */
-import { CMS_URL } from "../config";
+import { fetchLayoutData } from "./emdash";
 import type { PortableTextBlock } from "./emdash";
 import { esc, renderPortableText } from "./pt";
 
@@ -34,15 +34,9 @@ export interface LayoutData {
 const EMPTY: LayoutData = { menus: {}, widgetAreas: {}, sections: {} };
 
 export async function getLayout(): Promise<LayoutData> {
-	if (!CMS_URL) return EMPTY;
-	try {
-		const res = await fetch(`${CMS_URL}/frontend-api/layout.json`, { signal: AbortSignal.timeout(15000) });
-		if (!res.ok) return EMPTY;
-		const data = (await res.json()) as Partial<LayoutData>;
-		return { menus: data.menus ?? {}, widgetAreas: data.widgetAreas ?? {}, sections: data.sections ?? {} };
-	} catch {
-		return EMPTY;
-	}
+	const data = await fetchLayoutData();
+	if (!data) return EMPTY;
+	return { menus: data.menus ?? {}, widgetAreas: data.widgetAreas ?? {}, sections: data.sections ?? {} };
 }
 
 function menuLinks(items: MenuItem[]): string {
