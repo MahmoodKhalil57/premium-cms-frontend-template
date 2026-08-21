@@ -11,7 +11,8 @@ export async function getStaticPaths() {
 	return entries.map((product) => ({ params: { slug: product.id }, props: { product } }));
 }
 
-const { product } = Astro.props as { product: Entry };
+const product = (Astro.props as { product?: Entry }).product ?? (await getEmDashCollection("products")).entries.find((e) => e.id === Astro.params.slug);
+if (!product) return Astro.redirect("/404");
 const f = product.data.fields;
 const image = (f.image ?? null) as Parameters<typeof Image>[0]["image"] | null;
 const description = Array.isArray(f.description) ? renderPortableText(f.description as Parameters<typeof renderPortableText>[0]) : "";
