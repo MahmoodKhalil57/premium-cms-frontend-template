@@ -54,6 +54,25 @@ the sidebar entry appears once the plugin is installed), then place it:
 Submissions land in Plugins → Forms → Submissions; notifications, digests,
 webhooks, spam protection and CSV export are configured per form.
 
+## Shop
+
+Install **Commerce** from the admin Marketplace and add the Stripe secret key
+(Plugins → Commerce → Settings; enable *pay-later* orders if you want to
+take orders without online payment). Products are the **Products**
+collection this seed creates (`seed/content/products/*.json` are samples —
+replace or delete them). The template ships:
+
+- `/products` and `/products/<slug>` — static product pages (price, stock
+  badge, add to cart); prices display in `STORE_CURRENCY` (workflow env,
+  default `usd`) and are charged from the CMS, never from the browser
+- `/cart` — cart + checkout (card via Stripe Checkout, or pay-later)
+- `/checkout/success` — order confirmation (verifies the payment with the CMS)
+
+Markers for page-builder sections: `<button data-add-to-cart="<slug>">`
+anywhere, `<span data-cart-count></span>` in the header, `[data-cart]` /
+`[data-order]` containers if you design your own cart or receipt page.
+Orders, inventory, refunds and exports live in Plugins → Commerce.
+
 ## Editing
 
 | What                    | Where                                        |
@@ -63,6 +82,7 @@ webhooks, spam protection and CSV export are configured per form.
 | Navigation links        | Admin → Manage → Menus                       |
 | Footer / sidebar widgets| Admin → Manage → Widgets                     |
 | Redirects               | Admin → Manage → Redirects                   |
+| Products / orders       | Admin → Content → Products, Plugins → Commerce |
 | Page templates (code)   | `src/pages/` — anything you add shadows the CMS route of the same path |
 | CMS URL & identity      | `src/config.ts` (written by the platform)    |
 

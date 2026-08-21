@@ -84,6 +84,7 @@ const footerWidgets = fillLayoutSlots('<div data-widget-area="sidebar"></div>', 
 
 		<script>
 			import "../scripts/forms";
+			import "../scripts/shop";
 		</script>
 
 		<script>
@@ -133,6 +134,31 @@ const footerWidgets = fillLayoutSlots('<div data-widget-area="sidebar"></div>', 
 			.ec-form-submit[disabled] { opacity: 0.6; cursor: default; }
 			.ec-form-status--success { color: #067647; }
 			.ec-form-status--error { color: #b42318; }
+			/* Shop (premium-commerce plugin) — minimal, inherits the site's type/colours. */
+			.ec-shop__header, .ec-add-to-cart-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+			.ec-product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
+			.ec-product-card { display: flex; flex-direction: column; gap: 0.5rem; }
+			.ec-product-card__media img, .ec-product__media img { width: 100%; height: auto; display: block; border-radius: 6px; }
+			.ec-product-card__placeholder { aspect-ratio: 1; border-radius: 6px; background: color-mix(in srgb, currentColor 8%, transparent); }
+			.ec-product-card__title { margin: 0; font-size: 1rem; }
+			.ec-product-card__price, .ec-product__price { display: flex; gap: 0.5rem; align-items: baseline; margin: 0; font-weight: 600; }
+			.ec-product-card__price s, .ec-product__price s { opacity: 0.6; font-weight: 400; }
+			.ec-product-card__stock { margin: 0; font-size: 0.8rem; opacity: 0.8; }
+			.ec-add-to-cart, .ec-form-submit--secondary { font: inherit; padding: 0.6rem 1rem; border-radius: 4px; border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; }
+			.ec-add-to-cart[disabled] { opacity: 0.5; cursor: default; }
+			.ec-add-to-cart--error { border-color: #b42318; color: #b42318; }
+			.ec-qty { display: inline-flex; align-items: center; gap: 0.4rem; }
+			.ec-qty input { width: 4rem; font: inherit; padding: 0.5rem; border: 1px solid currentColor; border-radius: 4px; background: transparent; color: inherit; }
+			.ec-product__layout { display: grid; gap: 2rem; grid-template-columns: 1fr; }
+			@media (min-width: 48rem) { .ec-product__layout { grid-template-columns: 1fr 1fr; } }
+			.ec-product__sku, .ec-breadcrumb { font-size: 0.85rem; opacity: 0.7; }
+			.ec-cart__table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+			.ec-cart__table th, .ec-cart__table td { text-align: start; padding: 0.5rem 0.25rem; border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
+			.ec-cart__table input { width: 4rem; font: inherit; padding: 0.35rem; }
+			.ec-link { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; font: inherit; }
+			.ec-checkout { display: grid; gap: 1rem; max-width: 30rem; margin-top: 1.5rem; }
+			.ec-checkout__actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+			.ec-cart__note, .ec-order__meta { opacity: 0.8; }
 			/* Layout sections render through wrappers; make them transparent to
 			   the page layout so position:sticky inside them works. */
 			.layout-slot,

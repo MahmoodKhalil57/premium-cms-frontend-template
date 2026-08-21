@@ -1,0 +1,26 @@
+---
+/**
+ * Add-to-cart control for a product. Works on static pages and inside
+ * page-builder sections: any element with data-add-to-cart="<slug>" is
+ * wired up by the storefront script at runtime.
+ */
+import type { Entry } from "../lib/emdash";
+
+interface Props {
+	product: Entry;
+	label?: string;
+}
+const { product, label = "Add to cart" } = Astro.props;
+const f = product.data.fields;
+---
+
+<div class="ec-add-to-cart-row">
+	<label class="ec-qty">
+		<span>Qty</span>
+		<input type="number" min="1" value="1" data-qty-for={product.id} />
+	</label>
+	<button type="button" class="ec-add-to-cart" data-add-to-cart={product.id} data-product-id={product.data.id} data-title={product.data.title} data-price={f.price} data-slug={product.id}>
+		{label}
+	</button>
+	<p class="ec-product-card__stock" data-availability={product.data.id} hidden></p>
+</div>

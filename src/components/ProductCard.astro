@@ -1,0 +1,29 @@
+---
+import Image from "./Image.astro";
+import { formatPrice, STORE_CURRENCY } from "../lib/money";
+import type { Entry } from "../lib/emdash";
+
+interface Props {
+	product: Entry;
+}
+const { product } = Astro.props;
+const f = product.data.fields;
+const image = (f.image ?? null) as Parameters<typeof Image>[0]["image"] | null;
+---
+
+<article class="ec-product-card" data-product={product.data.id}>
+	<a href={`/products/${product.id}`} class="ec-product-card__media">
+		{image ? <Image image={image} /> : <div class="ec-product-card__placeholder" aria-hidden="true"></div>}
+	</a>
+	<div class="ec-product-card__body">
+		<h3 class="ec-product-card__title"><a href={`/products/${product.id}`}>{product.data.title}</a></h3>
+		<p class="ec-product-card__price">
+			<span>{formatPrice(f.price as number, STORE_CURRENCY)}</span>
+			{f.compare_at_price ? <s>{formatPrice(f.compare_at_price as number, STORE_CURRENCY)}</s> : null}
+		</p>
+		<p class="ec-product-card__stock" data-availability={product.data.id} hidden></p>
+		<button type="button" class="ec-add-to-cart" data-add-to-cart={product.id} data-product-id={product.data.id} data-title={product.data.title} data-price={f.price} data-slug={product.id}>
+			Add to cart
+		</button>
+	</div>
+</article>

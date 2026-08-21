@@ -50,6 +50,8 @@ export interface Entry {
 		publishedAt?: Date | null;
 		/** Taxonomy name → terms, e.g. { tag: [...], category: [...] }. */
 		terms: Record<string, Term[]>;
+		/** Every column of the entry (custom collections such as `products`); JSON columns parsed. */
+		fields: Record<string, unknown>;
 	};
 }
 
@@ -63,6 +65,7 @@ interface Row {
 	published_at?: string;
 	created_at?: string;
 	terms?: Record<string, Term[]>;
+	[column: string]: unknown;
 }
 
 /* ------------------------------------------------------------------ */
@@ -103,6 +106,16 @@ function toEntry(row: Row): Entry {
 			featured_image: parseJson<MediaValue>(row.featured_image) ?? null,
 			publishedAt: published && !Number.isNaN(published.getTime()) ? published : null,
 			terms: row.terms ?? {},
+			fields: Object.fromEntries(
+				Object.entries(row).map(([key, value]) => {
+					if (typeof value !== "string") return [key, value];
+					const trimmed = value.trim();
+					if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+						return [key, parseJson<unknown>(value) ?? value];
+					}
+					return [key, value];
+				}),
+			),
 		},
 	};
 }
