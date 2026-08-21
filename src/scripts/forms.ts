@@ -95,7 +95,13 @@ async function hydratePlaceholders() {
 		el.dataset.cmsFormReady = "1";
 		const slug = el.dataset.cmsForm!;
 		try {
-			const res = await fetch(`${BASE}/definition?id=${encodeURIComponent(slug)}`);
+			// A cold CMS isolate can answer 404 on its very first request while it
+			// loads marketplace plugins — retry once before giving up.
+			let res = await fetch(`${BASE}/definition?id=${encodeURIComponent(slug)}`);
+			if (res.status === 404) {
+				await new Promise((r) => setTimeout(r, 1500));
+				res = await fetch(`${BASE}/definition?id=${encodeURIComponent(slug)}`);
+			}
 			if (!res.ok) throw new Error(String(res.status));
 			const def = unwrap<Definition>(await res.json());
 			el.innerHTML = renderForm(def, slug);
