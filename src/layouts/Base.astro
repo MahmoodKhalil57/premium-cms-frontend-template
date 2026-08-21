@@ -1,8 +1,10 @@
 ---
-import { getMenu, getSiteSettings } from "../lib/emdash";
+import { getEmDashCollection, getMenu, getSiteSettings } from "../lib/emdash";
 import { getLayout, renderLayoutSection, fillLayoutSlots } from "../lib/layout";
 import { resolveStarterSiteIdentity } from "../utils/site-identity";
 import { CMS_URL } from "../config";
+import "../styles/site.css";
+import "../styles/theme.css";
 
 interface Props {
 	title: string;
@@ -18,6 +20,9 @@ const fullTitle = title.includes(siteTitle) ? title : `${title} — ${siteTitle}
 const pageDescription = description ?? siteTagline;
 
 const menu = await getMenu("primary");
+const socialMenu = await getMenu("social");
+const { entries: footerPages } = await getEmDashCollection("pages");
+const year = new Date().getFullYear();
 
 // Designer-owned chrome: the `site-header` / `site-footer` SECTIONS
 // (Manage → Sections) render instead of the built-in header/footer when
@@ -61,16 +66,19 @@ const footerWidgets = fillLayoutSlots('<div data-widget-area="sidebar"></div>', 
 	</head>
 	<body>
 		{headerHtml ? <div class="layout-slot" set:html={headerHtml} /> : (
-		<header>
-			<nav>
-				<a href="/">{siteTitle}</a>
-				{
-					menu?.items.map((item) => (
-						<a href={item.url} target={item.target}>
-							{item.label}
-						</a>
-					))
-				}
+		<header class="site-header">
+			<nav class="nav">
+				<a href="/" class="site-title">{siteTitle}</a>
+				<div class="nav-right">
+					<form class="site-search-form" action="/search" method="get" role="search">
+						<input type="search" name="q" placeholder="Search..." aria-label="Search" />
+					</form>
+					<div class="nav-links">
+						{menu?.items.map((item) => (
+							<a href={item.url} target={item.target}>{item.label}</a>
+						))}
+					</div>
+				</div>
 			</nav>
 		</header>
 		)}
@@ -80,8 +88,53 @@ const footerWidgets = fillLayoutSlots('<div data-widget-area="sidebar"></div>', 
 		</main>
 
 		{footerHtml ? <div class="layout-slot" set:html={footerHtml} /> : (
-		<footer>
-			<Fragment set:html={footerWidgets} />
+		<footer class="site-footer">
+			<div class="footer-inner">
+				<div class="footer-grid">
+					<div class="footer-brand">
+						<a href="/" class="footer-logo">{siteTitle}</a>
+						<p class="footer-tagline">{siteTagline}</p>
+					</div>
+					<div class="footer-nav">
+						<h4 class="footer-heading">Navigate</h4>
+						<ul class="footer-links">
+							<li><a href="/">Home</a></li>
+							<li><a href="/posts">All Posts</a></li>
+							{footerPages.filter((p) => p.id !== "home").slice(0, 3).map((page) => (
+								<li><a href={`/pages/${page.id}`}>{page.data.title}</a></li>
+							))}
+						</ul>
+					</div>
+					<div class="footer-nav">
+						<h4 class="footer-heading">Connect</h4>
+						<ul class="footer-links">
+							{socialMenu?.items.map((item) => (
+								<li>
+									<a href={item.url} target={item.target} rel={item.target === "_blank" ? "noopener noreferrer" : undefined}>{item.label}</a>
+								</li>
+							))}
+							<li><a href="/rss.xml">RSS Feed</a></li>
+						</ul>
+					</div>
+					<div class="footer-widgets-section">
+						<Fragment set:html={footerWidgets} />
+					</div>
+				</div>
+				<div class="footer-bottom">
+					<p class="footer-copyright">© {year} {siteTitle} · Powered by <a href="https://premium-cms.com">PremiumCMS</a></p>
+					<div class="theme-switcher">
+						<button type="button" class="theme-btn" data-theme="light" aria-label="Light mode">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+						</button>
+						<button type="button" class="theme-btn" data-theme="dark" aria-label="Dark mode">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+						</button>
+						<button type="button" class="theme-btn" data-theme="system" aria-label="System theme">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+						</button>
+					</div>
+				</div>
+			</div>
 		</footer>
 		)}
 

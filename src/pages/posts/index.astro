@@ -1,36 +1,48 @@
 ---
 import Base from "../../layouts/Base.astro";
-import Image from "../../components/Image.astro";
-import { getEmDashCollection } from "../../lib/emdash";
+import { getEmDashCollection, getTermsForEntries } from "../../lib/emdash";
+import { getReadingTime } from "../../utils/reading-time";
 
-const { entries: posts } = await getEmDashCollection("posts");
+const { entries } = await getEmDashCollection("posts");
+const posts = [...entries].sort((a, b) => (b.data.publishedAt?.getTime() ?? 0) - (a.data.publishedAt?.getTime() ?? 0));
+const tagsByEntry = await getTermsForEntries("posts", posts.map((p) => p.data.id), "tag");
+const formatDate = (date: Date) => date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 ---
 
-<Base title="All Posts">
-	<h1>Posts</h1>
-
-	{
-		posts.length === 0 ? (
-			<p>No posts yet.</p>
+<Base title="All Posts" description="Browse all blog posts">
+	<div class="posts-page">
+		<header class="page-header">
+			<h1 class="page-title">All Posts</h1>
+			<p class="page-description">{posts.length} {posts.length === 1 ? "article" : "articles"}</p>
+		</header>
+		{posts.length === 0 ? (
+			<p class="empty">No posts yet.</p>
 		) : (
-			<ul>
-				{posts.map((post) => (
-					<li>
-						<a href={`/posts/${post.id}`}>
-							{post.data.featured_image && <Image image={post.data.featured_image} />}
-							<h2>{post.data.title}</h2>
-						</a>
-						{post.data.excerpt && <p>{post.data.excerpt}</p>}
-						{(post.data.terms.tag ?? []).length > 0 && (
-							<div>
-								{(post.data.terms.tag ?? []).map((t) => (
-									<a href={`/tag/${t.slug}`}>{t.label}</a>
-								))}
-							</div>
-						)}
-					</li>
-				))}
-			</ul>
-		)
-	}
+			<div class="posts-list">
+				{posts.map((post) => {
+					const tags = tagsByEntry.get(post.data.id) ?? [];
+					return (
+						<article class="post-item">
+							<a href={`/posts/${post.id}`} class="post-link">
+								<div class="post-meta">
+									{post.data.publishedAt && <time>{formatDate(post.data.publishedAt)}</time>}
+									{post.data.publishedAt && <span class="meta-dot" />}
+									<span>{getReadingTime(post.data.content)} min read</span>
+								</div>
+								<h2 class="post-title">{post.data.title}</h2>
+								{post.data.excerpt && <p class="post-excerpt">{post.data.excerpt}</p>}
+							</a>
+							{tags.length > 0 && (
+								<div class="post-tags">
+									{tags.slice(0, 3).map((t) => (
+										<a href={`/tag/${t.slug}`} class="post-tag">{t.label}</a>
+									))}
+								</div>
+							)}
+						</article>
+					);
+				})}
+			</div>
+		)}
+	</div>
 </Base>

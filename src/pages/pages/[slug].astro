@@ -2,23 +2,29 @@
 import Base from "../../layouts/Base.astro";
 import { getEmDashCollection } from "../../lib/emdash";
 import { renderPortableText } from "../../lib/pt";
+import { fillLayoutSlots, getLayout } from "../../lib/layout";
+import { getSiteSettings } from "../../lib/emdash";
+import { resolveStarterSiteIdentity } from "../../utils/site-identity";
 
 export async function getStaticPaths() {
 	const { entries } = await getEmDashCollection("pages");
 	// `home` is the homepage body, rendered at `/` — not as a standalone page.
-	return entries
-		.filter((entry) => entry.id !== "home")
-		.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+	return entries.filter((entry) => entry.id !== "home").map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
 }
 
 const { entry: page } = Astro.props;
-const html = renderPortableText(page.data.content);
+const [layout, settings] = await Promise.all([getLayout(), getSiteSettings()]);
+const { siteTitle, siteTagline } = resolveStarterSiteIdentity(settings);
+const html = fillLayoutSlots(renderPortableText(page.data.content), layout, { title: siteTitle, tagline: siteTagline });
 ---
 
 <Base title={page.data.title ?? page.id}>
-	<article>
-		<h1>{page.data.title}</h1>
-
-		<Fragment set:html={html} />
+	<article class="page-article">
+		<header class="page-header">
+			<h1 class="page-title">{page.data.title}</h1>
+		</header>
+		<div class="page-content">
+			<Fragment set:html={html} />
+		</div>
 	</article>
 </Base>

@@ -1,7 +1,8 @@
 ---
 import Base from "../../layouts/Base.astro";
-import Image from "../../components/Image.astro";
-import { getEmDashCollection, getUsedTerms } from "../../lib/emdash";
+import PostCard from "../../components/PostCard.astro";
+import { getEmDashCollection, getTermsForEntries, getUsedTerms } from "../../lib/emdash";
+import { getReadingTime } from "../../utils/reading-time";
 
 export async function getStaticPaths() {
 	const terms = await getUsedTerms("posts", "tag");
@@ -10,24 +11,35 @@ export async function getStaticPaths() {
 
 const { term } = Astro.props;
 const { entries } = await getEmDashCollection("posts");
-const posts = entries.filter((p) => (p.data.terms.tag ?? []).some((t) => t.slug === term.slug));
+const posts = entries
+	.filter((p) => (p.data.terms.tag ?? []).some((t) => t.slug === term.slug))
+	.sort((a, b) => (b.data.publishedAt?.getTime() ?? 0) - (a.data.publishedAt?.getTime() ?? 0));
+const tagsByEntry = await getTermsForEntries("posts", posts.map((p) => p.data.id), "tag");
 ---
 
-<Base title={`Posts tagged ${term.label}`} description={`Posts tagged ${term.label}`}>
-	<h1>#{term.label}</h1>
-	<p>{posts.length} {posts.length === 1 ? "post" : "posts"}</p>
-
-	<ul>
-		{
-			posts.map((post) => (
-				<li>
-					<a href={`/posts/${post.id}`}>
-						{post.data.featured_image && <Image image={post.data.featured_image} />}
-						<h2>{post.data.title}</h2>
-					</a>
-					{post.data.excerpt && <p>{post.data.excerpt}</p>}
-				</li>
-			))
-		}
-	</ul>
+<Base title={`${term.label} posts`} description={`All posts in ${term.label}`}>
+	<section class="archive-section">
+		<header class="archive-header">
+			<span class="archive-label">Tag</span>
+			<h1 class="archive-title">{term.label}</h1>
+			<p class="archive-count">{posts.length} {posts.length === 1 ? "post" : "posts"}</p>
+		</header>
+		{posts.length === 0 ? (
+			<p class="no-posts">No posts here yet.</p>
+		) : (
+			<div class="posts-grid">
+				{posts.map((post) => (
+					<PostCard
+						title={post.data.title ?? "Untitled"}
+						excerpt={post.data.excerpt}
+						featuredImage={post.data.featured_image}
+						href={`/posts/${post.id}`}
+						date={post.data.publishedAt}
+						readingTime={getReadingTime(post.data.content)}
+						tags={tagsByEntry.get(post.data.id) ?? []}
+					/>
+				))}
+			</div>
+		)}
+	</section>
 </Base>

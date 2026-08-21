@@ -1,60 +1,99 @@
 ---
 import Base from "../layouts/Base.astro";
 import Image from "../components/Image.astro";
-import { getEmDashCollection, getSiteSettings } from "../lib/emdash";
+import PostCard from "../components/PostCard.astro";
+import { getEmDashCollection, getSiteSettings, getTermsForEntries } from "../lib/emdash";
 import { renderPortableText } from "../lib/pt";
 import { fillLayoutSlots, getLayout } from "../lib/layout";
+import { getReadingTime } from "../utils/reading-time";
 import { resolveStarterSiteIdentity } from "../utils/site-identity";
 
-const [{ entries: posts }, { entries: pages }, settings, layout] = await Promise.all([
-	getEmDashCollection("posts", { limit: 50 }),
+const POSTS_PER_PAGE = 7;
+const [{ entries: allPosts }, { entries: pages }, settings, layout] = await Promise.all([
+	getEmDashCollection("posts"),
 	getEmDashCollection("pages", { limit: 50 }),
 	getSiteSettings(),
 	getLayout(),
 ]);
 const { siteTitle, siteTagline } = resolveStarterSiteIdentity(settings);
 
-// Designer-owned homepage: when a CMS page with slug `home` exists, it IS
-// the homepage — a page-builder design, editable in the admin. Without one,
-// the starter's recent-posts list renders.
+// Designer-owned homepage: a CMS page with slug `home` IS the homepage (page
+// builder). Without one, the theme's featured post + latest grid renders.
 const homePage = pages.find((p) => p.id === "home");
-const homeHtml = homePage
-	? fillLayoutSlots(renderPortableText(homePage.data.content), layout, { title: siteTitle, tagline: siteTagline })
-	: "";
+const homeHtml = homePage ? fillLayoutSlots(renderPortableText(homePage.data.content), layout, { title: siteTitle, tagline: siteTagline }) : "";
+
+const posts = [...allPosts].sort((a, b) => (b.data.publishedAt?.getTime() ?? 0) - (a.data.publishedAt?.getTime() ?? 0));
+const visiblePosts = posts.slice(0, POSTS_PER_PAGE);
+const hasMorePosts = posts.length > POSTS_PER_PAGE;
+const featuredPost = visiblePosts.find((p) => p.data.featured_image);
+const featuredIndex = featuredPost ? visiblePosts.indexOf(featuredPost) : -1;
+const gridPosts = visiblePosts.filter((_, i) => i !== featuredIndex).slice(0, 6);
+const tagsByEntry = await getTermsForEntries("posts", [...(featuredPost ? [featuredPost.data.id] : []), ...gridPosts.map((p) => p.data.id)], "tag");
+const featuredTags = featuredPost ? (tagsByEntry.get(featuredPost.data.id) ?? []) : [];
+const formatDate = (date: Date | null | undefined) => (date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : null);
 ---
 
 <Base title={siteTitle} description={siteTagline}>
-	{
-		homeHtml ? (
-			<Fragment set:html={homeHtml} />
-		) : posts.length === 0 ? (
-			<p>
-				No posts yet. <a href="/_emdash/admin/content/posts/new">Create one</a>.
-			</p>
-		) : (
-			<>
-				<h1>Recent Posts</h1>
-				<ul>
-					{posts.slice(0, 10).map((post) => (
-						<li>
-							<a href={`/posts/${post.id}`}>
-								{post.data.featured_image && <Image image={post.data.featured_image} />}
-								<h2>{post.data.title}</h2>
+	{homeHtml ? (
+		<Fragment set:html={homeHtml} />
+	) : posts.length === 0 ? (
+		<section class="empty-state">
+			<h2>No posts yet</h2>
+			<p>Create your first post in the admin panel.</p>
+			<a href="/_emdash/admin/content/posts/new" class="btn">Create a post</a>
+		</section>
+	) : (
+		<div class="home-content">
+			{featuredPost && (
+				<section class="featured-section">
+					<div class="featured-grid">
+						<a href={`/posts/${featuredPost.id}`} class="featured-image-link">
+							<div class="featured-image">
+								<Image image={featuredPost.data.featured_image!} loading="eager" />
+							</div>
+						</a>
+						<div class="featured-content">
+							<div class="featured-meta">
+								{formatDate(featuredPost.data.publishedAt) && <time>{formatDate(featuredPost.data.publishedAt)}</time>}
+								<span class="meta-dot" />
+								<span>{getReadingTime(featuredPost.data.content)} min read</span>
+							</div>
+							<a href={`/posts/${featuredPost.id}`} class="featured-title-link">
+								<h1 class="featured-title">{featuredPost.data.title}</h1>
 							</a>
-							{post.data.excerpt && <p>{post.data.excerpt}</p>}
-							{post.data.publishedAt && (
-								<time datetime={post.data.publishedAt.toISOString()}>
-									{post.data.publishedAt.toLocaleDateString("en-US", {
-										year: "numeric",
-										month: "long",
-										day: "numeric",
-									})}
-								</time>
+							{featuredPost.data.excerpt && <p class="featured-excerpt">{featuredPost.data.excerpt}</p>}
+							{featuredTags.length > 0 && (
+								<div class="featured-tags">
+									{featuredTags.map((tag) => (
+										<a href={`/tag/${tag.slug}`} class="featured-tag">{tag.label}</a>
+									))}
+								</div>
 							)}
-						</li>
-					))}
-				</ul>
-			</>
-		)
-	}
+						</div>
+					</div>
+				</section>
+			)}
+			{gridPosts.length > 0 && (
+				<section class="posts-section">
+					<header class="section-header">
+						<h2 class="section-title">Latest</h2>
+						{hasMorePosts && <a href="/posts" class="section-link">View all</a>}
+					</header>
+					<div class="posts-grid">
+						{gridPosts.map((post) => (
+							<PostCard
+								title={post.data.title ?? "Untitled"}
+								excerpt={post.data.excerpt}
+								featuredImage={post.data.featured_image}
+								href={`/posts/${post.id}`}
+								date={post.data.publishedAt}
+								readingTime={getReadingTime(post.data.content)}
+								tags={tagsByEntry.get(post.data.id) ?? []}
+							/>
+						))}
+					</div>
+				</section>
+			)}
+		</div>
+	)}
 </Base>

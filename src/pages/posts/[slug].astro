@@ -1,8 +1,10 @@
 ---
 import Base from "../../layouts/Base.astro";
 import Image from "../../components/Image.astro";
-import { getEmDashCollection } from "../../lib/emdash";
+import PostCard from "../../components/PostCard.astro";
+import { getEmDashCollection, getTermsForEntries } from "../../lib/emdash";
 import { renderPortableText } from "../../lib/pt";
+import { getReadingTime } from "../../utils/reading-time";
 
 export async function getStaticPaths() {
 	const { entries } = await getEmDashCollection("posts");
@@ -12,47 +14,116 @@ export async function getStaticPaths() {
 const { entry: post } = Astro.props;
 const html = renderPortableText(post.data.content);
 const tags = post.data.terms.tag ?? [];
-const categories = post.data.terms.category ?? [];
+const readingTime = getReadingTime(post.data.content);
+const publishDate = post.data.publishedAt?.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) ?? null;
+
+const { entries: all } = await getEmDashCollection("posts");
+const otherPosts = [...all]
+	.filter((p) => p.id !== post.id)
+	.sort((a, b) => (b.data.publishedAt?.getTime() ?? 0) - (a.data.publishedAt?.getTime() ?? 0))
+	.slice(0, 3);
+const otherTags = await getTermsForEntries("posts", otherPosts.map((p) => p.data.id), "tag");
 ---
 
 <Base title={post.data.title ?? post.id} description={post.data.excerpt}>
-	<article>
-		{post.data.featured_image && <Image image={post.data.featured_image} loading="eager" />}
-
-		<h1>{post.data.title}</h1>
-
-		{
-			post.data.publishedAt && (
-				<time datetime={post.data.publishedAt.toISOString()}>
-					{post.data.publishedAt.toLocaleDateString("en-US", {
-						year: "numeric",
-						month: "long",
-						day: "numeric",
-					})}
-				</time>
-			)
-		}
-
-		{
-			categories.length > 0 && (
-				<div>
-					{categories.map((c) => (
-						<a href={`/category/${c.slug}`}>{c.label}</a>
-					))}
+	<article class="article">
+		{post.data.featured_image && (
+			<div class="article-hero">
+				<Image image={post.data.featured_image} loading="eager" />
+			</div>
+		)}
+		<div class="article-grid">
+			<aside class="article-meta-col">
+				<div class="meta-sticky">
+					{publishDate && (
+						<div class="meta-block">
+							<span class="meta-label">Published</span>
+							<time class="meta-value">{publishDate}</time>
+						</div>
+					)}
+					<div class="meta-block">
+						<span class="meta-label">Reading time</span>
+						<span class="meta-value">{readingTime} min</span>
+					</div>
+					{tags.length > 0 && (
+						<div class="meta-block">
+							<span class="meta-label">Tags</span>
+							<div class="meta-tags">
+								{tags.map((t) => (
+									<a href={`/tag/${t.slug}`} class="meta-tag">{t.label}</a>
+								))}
+							</div>
+						</div>
+					)}
 				</div>
-			)
-		}
-
-		<Fragment set:html={html} />
-
-		{
-			tags.length > 0 && (
-				<div>
-					{tags.map((t) => (
-						<a href={`/tag/${t.slug}`}>{t.label}</a>
-					))}
+			</aside>
+			<div class="article-main">
+				<header class="article-header">
+					<div class="article-meta">
+						{publishDate && (
+							<>
+								<time>{publishDate}</time>
+								<span class="meta-dot" />
+							</>
+						)}
+						<span>{readingTime} min read</span>
+					</div>
+					<h1 class="article-title">{post.data.title}</h1>
+					{post.data.excerpt && <p class="article-excerpt">{post.data.excerpt}</p>}
+				</header>
+				<div class="article-content">
+					<Fragment set:html={html} />
 				</div>
-			)
-		}
+			</div>
+			<aside class="article-sidebar">
+				<div class="sidebar-sticky">
+					<nav class="toc" aria-label="Table of contents">
+						<h4 class="toc-title">On this page</h4>
+						<div class="toc-content" id="toc-content"></div>
+					</nav>
+				</div>
+			</aside>
+		</div>
 	</article>
+	{otherPosts.length > 0 && (
+		<section class="more-posts">
+			<div class="more-inner">
+				<h2 class="more-title">Continue reading</h2>
+				<div class="more-grid">
+					{otherPosts.map((p) => (
+						<PostCard
+							title={p.data.title ?? "Untitled"}
+							excerpt={p.data.excerpt}
+							featuredImage={p.data.featured_image}
+							href={`/posts/${p.id}`}
+							date={p.data.publishedAt}
+							readingTime={getReadingTime(p.data.content)}
+							tags={otherTags.get(p.data.id) ?? []}
+						/>
+					))}
+				</div>
+			</div>
+		</section>
+	)}
+	<script>
+		// Table of contents from the article's h2/h3 headings.
+		const content = document.querySelector(".article-content");
+		const toc = document.getElementById("toc-content");
+		if (content && toc) {
+			const headings = content.querySelectorAll<HTMLHeadingElement>("h2, h3");
+			if (headings.length === 0) toc.closest(".toc")?.remove();
+			const list = document.createElement("ul");
+			headings.forEach((h, i) => {
+				if (!h.id) h.id = (h.textContent || `section-${i}`).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `section-${i}`;
+				const li = document.createElement("li");
+				li.className = h.tagName === "H3" ? "toc-item toc-sub" : "toc-item";
+				const a = document.createElement("a");
+				a.href = `#${h.id}`;
+				a.textContent = h.textContent;
+				li.appendChild(a);
+				list.appendChild(li);
+			});
+			toc.appendChild(list);
+		}
+	</script>
 </Base>
