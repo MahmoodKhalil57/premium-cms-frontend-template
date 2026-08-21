@@ -7,11 +7,20 @@ import baseLinks from "./src/base-links.mjs";
 // src/lib/emdash.ts), and the platform reverse-proxies the Pages build on
 // the site's own domain.
 //
-// BASE_PATH (set by the deploy workflow to "/<repo>" for project Pages) makes
-// the raw github.io URL work too; see src/base-links.mjs.
+// Project Pages live under /<repo> (user/org Pages at the root). The base is
+// derived from GitHub Actions' own variables, or set explicitly with
+// BASE_PATH; see src/base-links.mjs for how links get the prefix.
+function pagesBase() {
+	if (process.env.BASE_PATH) return process.env.BASE_PATH;
+	const repo = process.env.GITHUB_REPOSITORY; // owner/name, always set in Actions
+	if (!repo) return "/";
+	const [owner, name] = repo.split("/");
+	return name.toLowerCase() === `${owner.toLowerCase()}.github.io` ? "/" : `/${name}`;
+}
+
 export default defineConfig({
 	output: "static",
-	base: process.env.BASE_PATH || "/",
+	base: pagesBase(),
 	trailingSlash: "ignore",
 	devToolbar: { enabled: false },
 	integrations: [baseLinks()],
