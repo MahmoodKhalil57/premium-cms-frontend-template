@@ -40,6 +40,19 @@ page-builder blocks you edit visually in the admin.
 - **Fail-soft builds.** If the CMS is unreachable at build time, the build
   still succeeds with empty content — a deploy never breaks on a blip.
 
+## Forms
+
+Install **Forms** from the admin Marketplace, create a form under Plugins →
+Forms, then place it:
+
+- in an Astro page: `import CmsForm from "../components/CmsForm.astro"` and
+  `<CmsForm id="contact" />` (pre-rendered at build time), or
+- anywhere — including page-builder sections — with
+  `<div data-cms-form="contact"></div>` (hydrated at runtime).
+
+Submissions land in Plugins → Forms → Submissions; notifications, digests,
+webhooks, spam protection and CSV export are configured per form.
+
 ## Editing
 
 | What                    | Where                                        |
