@@ -42,8 +42,9 @@ page-builder blocks you edit visually in the admin.
 
 ## Forms
 
-Install **Forms** from the admin Marketplace, create a form under Plugins →
-Forms, then place it:
+Install **Forms** from the admin Marketplace, design a form in **Builder**
+(drag-and-drop fields, multi-step, conditions, validation, notifications —
+the sidebar entry appears once the plugin is installed), then place it:
 
 - in an Astro page: `import CmsForm from "../components/CmsForm.astro"` and
   `<CmsForm id="contact" />` (pre-rendered at build time), or
