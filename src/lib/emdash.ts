@@ -24,6 +24,8 @@ export interface PortableTextBlock {
 
 export interface MediaValue {
 	id?: string;
+	src?: string;
+	meta?: { storageKey?: string };
 	alt?: string;
 	width?: number;
 	height?: number;

@@ -23,7 +23,10 @@ const media: MediaValue | null =
 				}
 			})()
 		: (image ?? null);
-const src = media?.id ? `${CMS_URL}/_emdash/api/media/file/${media.id}` : null;
+// Local media is addressed by its storage key (id + extension); external providers carry a direct src.
+const storageKey = (media as { meta?: { storageKey?: string } } | null)?.meta?.storageKey ?? media?.id;
+const direct = (media as { src?: string } | null)?.src;
+const src = direct && /^https?:\/\//.test(direct) ? direct : storageKey ? `${CMS_URL}/_emdash/api/media/file/${storageKey}` : null;
 ---
 
 {src && <img src={src} alt={media?.alt ?? ""} width={media?.width} height={media?.height} loading={loading} />}
