@@ -2,14 +2,15 @@
 import Base from "../../layouts/Base.astro";
 import { getEmDashCollection } from "../../lib/emdash";
 import CmsContent from "../../components/CmsContent.astro";
+import { ROUTE_PAGES } from "../../lib/slots";
 
 export async function getStaticPaths() {
 	const { entries } = await getEmDashCollection("pages");
-	// `home` is the homepage body, rendered at `/` — not as a standalone page.
-	return entries.filter((entry) => entry.id !== "home").map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+	// Route pages (home, posts, products, cart, checkout-success, 404) render at their own URLs.
+	return entries.filter((entry) => !ROUTE_PAGES.has(entry.id)).map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
 }
 
-const page = Astro.props.entry ?? (await getEmDashCollection("pages")).entries.find((e) => e.id === Astro.params.slug && e.id !== "home");
+const page = Astro.props.entry ?? (await getEmDashCollection("pages")).entries.find((e) => e.id === Astro.params.slug && !ROUTE_PAGES.has(e.id));
 if (!page) return Astro.redirect("/404");
 ---
 

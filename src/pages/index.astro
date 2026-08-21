@@ -1,11 +1,10 @@
 ---
 import Base from "../layouts/Base.astro";
-import { CMS_URL } from "../config";
-import Image from "../components/Image.astro";
 import CmsContent from "../components/CmsContent.astro";
 import PostCard from "../components/PostCard.astro";
+import { CMS_URL } from "../config";
+import { byNewest, featuredPostHtml } from "../lib/cards";
 import { getEmDashCollection, getSiteSettings, getTermsForEntries } from "../lib/emdash";
-import { getReadingTime } from "../utils/reading-time";
 import { resolveStarterSiteIdentity } from "../utils/site-identity";
 
 const POSTS_PER_PAGE = 7;
@@ -16,19 +15,17 @@ const [{ entries: allPosts }, { entries: pages }, settings] = await Promise.all(
 ]);
 const { siteTitle, siteTagline } = resolveStarterSiteIdentity(settings);
 
-// Designer-owned homepage: a CMS page with slug `home` IS the homepage (page
-// builder). Without one, the theme's featured post + latest grid renders.
+// The homepage is the CMS page with slug `home` (Admin → Pages): a page-builder
+// design whose markers (data-featured-post, data-posts-grid, …) the theme fills.
+// Without one, the same design renders from code.
 const homePage = pages.find((p) => p.id === "home");
 
-const posts = [...allPosts].sort((a, b) => (b.data.publishedAt?.getTime() ?? 0) - (a.data.publishedAt?.getTime() ?? 0));
+const posts = [...allPosts].sort(byNewest);
 const visiblePosts = posts.slice(0, POSTS_PER_PAGE);
 const hasMorePosts = posts.length > POSTS_PER_PAGE;
 const featuredPost = visiblePosts.find((p) => p.data.featured_image);
-const featuredIndex = featuredPost ? visiblePosts.indexOf(featuredPost) : -1;
-const gridPosts = visiblePosts.filter((_, i) => i !== featuredIndex).slice(0, 6);
-const tagsByEntry = await getTermsForEntries("posts", [...(featuredPost ? [featuredPost.data.id] : []), ...gridPosts.map((p) => p.data.id)], "tag");
-const featuredTags = featuredPost ? (tagsByEntry.get(featuredPost.data.id) ?? []) : [];
-const formatDate = (date: Date | null | undefined) => (date ? date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : null);
+const gridPosts = visiblePosts.filter((p) => p !== featuredPost).slice(0, 6);
+const tagsByEntry = await getTermsForEntries("posts", visiblePosts.map((p) => p.data.id), "tag");
 ---
 
 <Base title={siteTitle} description={siteTagline}>
@@ -42,35 +39,7 @@ const formatDate = (date: Date | null | undefined) => (date ? date.toLocaleDateS
 		</section>
 	) : (
 		<div class="home-content">
-			{featuredPost && (
-				<section class="featured-section">
-					<div class="featured-grid">
-						<a href={`/posts/${featuredPost.id}`} class="featured-image-link">
-							<div class="featured-image">
-								<Image image={featuredPost.data.featured_image!} loading="eager" />
-							</div>
-						</a>
-						<div class="featured-content">
-							<div class="featured-meta">
-								{formatDate(featuredPost.data.publishedAt) && <time>{formatDate(featuredPost.data.publishedAt)}</time>}
-								<span class="meta-dot" />
-								<span>{getReadingTime(featuredPost.data.content)} min read</span>
-							</div>
-							<a href={`/posts/${featuredPost.id}`} class="featured-title-link">
-								<h1 class="featured-title">{featuredPost.data.title}</h1>
-							</a>
-							{featuredPost.data.excerpt && <p class="featured-excerpt">{featuredPost.data.excerpt}</p>}
-							{featuredTags.length > 0 && (
-								<div class="featured-tags">
-									{featuredTags.map((tag) => (
-										<a href={`/tag/${tag.slug}`} class="featured-tag">{tag.label}</a>
-									))}
-								</div>
-							)}
-						</div>
-					</div>
-				</section>
-			)}
+			{featuredPost && <Fragment set:html={featuredPostHtml(featuredPost, tagsByEntry.get(featuredPost.data.id) ?? [])} />}
 			{gridPosts.length > 0 && (
 				<section class="posts-section">
 					<header class="section-header">
@@ -78,17 +47,7 @@ const formatDate = (date: Date | null | undefined) => (date ? date.toLocaleDateS
 						{hasMorePosts && <a href="/posts" class="section-link">View all</a>}
 					</header>
 					<div class="posts-grid">
-						{gridPosts.map((post) => (
-							<PostCard
-								title={post.data.title ?? "Untitled"}
-								excerpt={post.data.excerpt}
-								featuredImage={post.data.featured_image}
-								href={`/posts/${post.id}`}
-								date={post.data.publishedAt}
-								readingTime={getReadingTime(post.data.content)}
-								tags={tagsByEntry.get(post.data.id) ?? []}
-							/>
-						))}
+						{gridPosts.map((post) => <PostCard post={post} tags={tagsByEntry.get(post.data.id) ?? []} />)}
 					</div>
 				</section>
 			)}

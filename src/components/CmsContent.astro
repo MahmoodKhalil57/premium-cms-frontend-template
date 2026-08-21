@@ -10,8 +10,8 @@
  */
 import type { PortableTextBlock } from "../lib/emdash";
 import { getSiteSettings } from "../lib/emdash";
-import { fillLayoutSlots, getLayout } from "../lib/layout";
 import { renderPortableText } from "../lib/pt";
+import { fillAllSlots } from "../lib/slots";
 import { resolveStarterSiteIdentity } from "../utils/site-identity";
 
 interface Props {
@@ -23,9 +23,8 @@ interface Props {
 }
 
 const { value, collection, entryId, slug, field = "content" } = Astro.props;
-const [layout, settings] = await Promise.all([getLayout(), getSiteSettings()]);
-const { siteTitle, siteTagline } = resolveStarterSiteIdentity(settings);
-const html = fillLayoutSlots(renderPortableText(value), layout, { title: siteTitle, tagline: siteTagline });
+const { siteTitle, siteTagline } = resolveStarterSiteIdentity(await getSiteSettings());
+const html = await fillAllSlots(renderPortableText(value), { title: siteTitle, tagline: siteTagline });
 ---
 
 <div data-cms-content={`${collection}:${entryId}:${field}`} data-cms-slug={slug}>
