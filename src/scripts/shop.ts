@@ -14,8 +14,11 @@
 
 import { CMS_URL } from "../config";
 
-const onCmsDomain = typeof location !== "undefined" && (!CMS_URL || location.origin === CMS_URL.replace(/\/$/, ""));
-const API = onCmsDomain ? "" : CMS_URL;
+// The platform serves this frontend on the site's own domain(s) (the
+// worker proxies the Pages build), so the CMS is same-origin everywhere
+// except off-domain previews (github.io, localhost) which use CMS_URL.
+const offDomain = typeof location !== "undefined" && /(^|\.)github\.io$|^localhost$|^127\.|^0\.0\.0\.0$/.test(location.hostname);
+const API = offDomain ? CMS_URL : "";
 const BASE = `${API}/_emdash/api/plugins/premium-commerce`;
 const CART_KEY = "ec-cart";
 
