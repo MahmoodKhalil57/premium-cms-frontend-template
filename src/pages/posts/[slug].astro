@@ -11,7 +11,9 @@ export async function getStaticPaths() {
 	return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
 }
 
-const { entry: post } = Astro.props;
+// Static build: entry comes from getStaticPaths. Hosted by the CMS (SSR): resolve it from the URL.
+const post = Astro.props.entry ?? (await getEmDashCollection("posts")).entries.find((e) => e.id === Astro.params.slug);
+if (!post) return Astro.redirect("/404");
 const html = renderPortableText(post.data.content);
 const tags = post.data.terms.tag ?? [];
 const readingTime = getReadingTime(post.data.content);

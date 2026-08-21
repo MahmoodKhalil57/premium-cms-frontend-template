@@ -12,7 +12,8 @@ export async function getStaticPaths() {
 	return entries.filter((entry) => entry.id !== "home").map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
 }
 
-const { entry: page } = Astro.props;
+const page = Astro.props.entry ?? (await getEmDashCollection("pages")).entries.find((e) => e.id === Astro.params.slug && e.id !== "home");
+if (!page) return Astro.redirect("/404");
 const [layout, settings] = await Promise.all([getLayout(), getSiteSettings()]);
 const { siteTitle, siteTagline } = resolveStarterSiteIdentity(settings);
 const html = fillLayoutSlots(renderPortableText(page.data.content), layout, { title: siteTitle, tagline: siteTagline });

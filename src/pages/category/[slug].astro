@@ -9,7 +9,8 @@ export async function getStaticPaths() {
 	return terms.map((term) => ({ params: { slug: term.slug }, props: { term } }));
 }
 
-const { term } = Astro.props;
+const term = Astro.props.term ?? (await getUsedTerms("posts", "category")).find((t) => t.slug === Astro.params.slug);
+if (!term) return Astro.redirect("/404");
 const { entries } = await getEmDashCollection("posts");
 const posts = entries
 	.filter((p) => (p.data.terms.category ?? []).some((t) => t.slug === term.slug))
