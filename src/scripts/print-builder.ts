@@ -36,7 +36,7 @@ const CSS = `
 .pbx__side h3{margin:8px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#666}
 .pbx__row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .pbx__btn{font:inherit;font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a;cursor:pointer;line-height:1.2}
-.pbx__btn--primary{background:#111;color:#fff;border-color:#111}
+.pbx__btn--primary{background:#111;color:#fff !important;border-color:#111}
 .pbx__btn[disabled]{opacity:.5;cursor:default}
 .pbx input[type=text],.pbx select,.pbx input[type=number]{font:inherit;padding:5px 8px;border:1px solid #ccc;border-radius:6px;width:100%}
 .pbx input[type=range]{width:100%}
