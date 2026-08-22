@@ -246,6 +246,14 @@ const cms = await cmsFragments(Astro, { title: fullTitle, description: pageDescr
 			.ec-design__summary { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 0.9rem; }
 			.ec-design__thumb { width: 64px; height: 64px; object-fit: contain; border: 1px solid color-mix(in srgb, currentColor 15%, transparent); border-radius: 6px; background: #fff; }
 			.ec-link { font: inherit; background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; }
+			.ec-account__section { margin: 2rem 0; } .ec-account__section h2 { font-size: 1.25rem; margin-bottom: 0.75rem; }
+			.ec-address-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 0.75rem; }
+			.ec-address-card { border: 1px solid color-mix(in srgb, currentColor 15%, transparent); border-radius: 8px; padding: 0.75rem 1rem; } .ec-address-card p { margin: 0.25rem 0; font-size: 0.9rem; }
+			.ec-address-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 0.75rem; } .ec-address-form .ec-form-field--half { margin: 0; }
+			.ec-account__add { margin-top: 1rem; } .ec-account__add summary { cursor: pointer; font-weight: 600; } .ec-account__add form { margin-top: 0.75rem; }
+			.ec-signin { display: grid; gap: 0.75rem; max-width: 28rem; }
+			.ec-checkout fieldset { border: 0; padding: 0; margin: 0 0 1rem; } .ec-checkout legend { padding: 0; }
+			@media (max-width: 600px) { .ec-address-form { grid-template-columns: 1fr; } }
 			.ec-qty { display: inline-flex; align-items: center; gap: 0.4rem; }
 			.ec-qty input { width: 4rem; font: inherit; padding: 0.5rem; border: 1px solid currentColor; border-radius: 4px; background: transparent; color: inherit; }
 			.ec-product__layout { display: grid; gap: 2rem; grid-template-columns: 1fr; }

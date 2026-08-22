@@ -13,6 +13,7 @@
  */
 
 import { collectOptions, initProductOptions } from "./product-options";
+import { type Account, type AccountAddress, addressFormHtml, api as accountApi, formatAddress, initAccount, readAddress, signInFormHtml, whoAmI, wireSignIn } from "./account";
 import { CMS_URL } from "../config";
 
 // The platform serves this frontend on the site's own domain(s) (the
@@ -45,6 +46,8 @@ interface Catalog {
 	provider?: string;
 	/** Legacy alias of `online`. */
 	stripe: boolean;
+	/** Shoppers may sign in to save addresses and cards. */
+	customerAccounts?: boolean;
 	products: Array<{ id: string; slug: string; title: string; unitAmount: number; available: number | null }>;
 }
 
@@ -107,6 +110,61 @@ function writeCart(lines: CartLine[]): void {
 	}
 	renderCount();
 	document.dispatchEvent(new CustomEvent("ec-cart:change", { detail: { lines } }));
+	scheduleCartSync(lines);
+}
+
+/* ---- server-side cart (signed-in shoppers + guests by token) ------------- */
+
+const CART_TOKEN_KEY = "ec-cart-token";
+function cartToken(): string {
+	let t = localStorage.getItem(CART_TOKEN_KEY);
+	if (!t) {
+		const b = new Uint8Array(18);
+		crypto.getRandomValues(b);
+		t = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+		localStorage.setItem(CART_TOKEN_KEY, t);
+	}
+	return t;
+}
+let syncTimer: number | undefined;
+function scheduleCartSync(lines: CartLine[]): void {
+	window.clearTimeout(syncTimer);
+	syncTimer = window.setTimeout(() => void pushCart(lines), 600);
+}
+const serverLine = (l: CartLine) => ({ productId: l.productId, quantity: l.quantity, ...(l.options ? { options: l.options } : {}), ...(l.customization ? { customization: { design: l.customization.design, previewMediaId: l.customization.previewMediaId } } : {}) });
+async function pushCart(lines: CartLine[]): Promise<void> {
+	try {
+		const me = await whoAmI();
+		if (me) await accountApi("cart/save", { lines: lines.map(serverLine) });
+		else await fetch(`${BASE}/cart/guest`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: cartToken(), op: "save", lines: lines.map(serverLine) }) });
+	} catch {
+		/* offline or accounts disabled — the local cart is still the source of truth for this browser */
+	}
+}
+/** On sign-in, fold the guest cart into the account cart and adopt the merged lines (local previews are kept where possible). */
+async function adoptServerCart(): Promise<void> {
+	const me = await whoAmI();
+	if (!me) return;
+	try {
+		const local = readCart();
+		const { cart } = await accountApi<{ cart: { lines: Array<{ productId: string; quantity: number; options?: Record<string, unknown>; customization?: CartLine["customization"] }> } }>("cart/get", { mergeToken: cartToken(), mergeLines: local.map(serverLine) });
+		if (!cart.lines.length) return;
+		const cat = await loadCatalog();
+		const merged: CartLine[] = cart.lines.map((l) => {
+			const known = local.find((x) => lineKey(x) === lineKey(l));
+			const p = cat?.products.find((x) => x.id === l.productId || x.slug === l.productId);
+			return known ? { ...known, quantity: l.quantity } : { productId: l.productId, slug: p?.slug ?? l.productId, title: p?.title ?? l.productId, price: p ? p.unitAmount / (ZERO_DECIMAL.has(currency) ? 1 : 100) : 0, quantity: l.quantity, options: l.options, customization: l.customization };
+		});
+		try {
+			localStorage.setItem(CART_KEY, JSON.stringify(merged));
+		} catch {
+			/* private mode */
+		}
+		renderCount();
+		renderCart();
+	} catch {
+		/* accounts disabled or offline */
+	}
 }
 
 export function addToCart(line: Omit<CartLine, "quantity">, quantity = 1): void {
@@ -272,14 +330,8 @@ function renderCart(): void {
 			<tfoot><tr><th colspan="2">Subtotal</th><th>${money(subtotal)}</th><td></td></tr></tfoot>
 		</table>
 		<p class="ec-cart__note">Shipping, tax and discounts are calculated at checkout.</p>
-		<form class="ec-checkout" data-checkout>
-			<label class="ec-form-field"><span class="ec-form-label">Email</span><input class="ec-form-input" type="email" name="email" required placeholder="you@example.com" /></label>
-			<div class="ec-checkout__actions">
-				<button type="submit" class="ec-form-submit" data-checkout-method="online">Pay online</button>
-				<button type="submit" class="ec-form-submit ec-form-submit--secondary" data-checkout-method="manual" hidden>Order now, pay later</button>
-			</div>
-			<p class="ec-form-status" data-checkout-status aria-live="polite"></p>
-		</form>`;
+		<div data-checkout-host></div>`;
+	void renderCheckoutForm(root);
 	root.querySelectorAll<HTMLInputElement>("[data-line-qty]").forEach((input) => {
 		input.addEventListener("change", () => {
 			setQuantity(input.dataset.lineQty!, Math.max(0, Number(input.value) || 0));
@@ -300,28 +352,6 @@ function renderCart(): void {
 		if (manual) manual.hidden = !cat.manualPayment;
 		if (online) online.hidden = !hasOnline;
 		if (!hasOnline && !cat.manualPayment) setStatus(root, "Checkout is not configured yet.", true);
-	});
-	const form = root.querySelector<HTMLFormElement>("[data-checkout]");
-	let method = "online";
-	form?.querySelectorAll<HTMLButtonElement>("[data-checkout-method]").forEach((b) => b.addEventListener("click", () => (method = b.dataset.checkoutMethod || "online")));
-	form?.addEventListener("submit", async (e) => {
-		e.preventDefault();
-		const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
-		const buttons = form.querySelectorAll<HTMLButtonElement>("button");
-		buttons.forEach((b) => (b.disabled = true));
-		setStatus(root, "Starting checkout…");
-		try {
-			const result = await api<{ url: string; orderId: string; number: number }>("checkout", {
-				method: "POST",
-				body: JSON.stringify({ items: readCart().map((l) => ({ productId: l.productId, quantity: l.quantity, ...(l.options ? { options: l.options } : {}), ...(l.customization ? { customization: { design: l.customization.design, previewMediaId: l.customization.previewMediaId } } : {}) })), method, email }),
-			});
-			if (method === "manual") clearCart();
-			else sessionStorage.setItem("ec-pending-order", result.orderId);
-			location.assign(result.url);
-		} catch (err) {
-			setStatus(root, err instanceof Error ? err.message : "Checkout failed", true);
-			buttons.forEach((b) => (b.disabled = false));
-		}
 	});
 }
 
@@ -397,6 +427,8 @@ if (typeof document !== "undefined") {
 	const boot = () => {
 		renderCount();
 		initProductOptions(`${BASE}/upload`);
+		initAccount();
+		void adoptServerCart();
 		wireAddToCart(document);
 		void renderAvailability();
 		renderCart();
@@ -405,4 +437,90 @@ if (typeof document !== "undefined") {
 	};
 	if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 	else boot();
+}
+
+/* ---- checkout form: guest or account ----------------------------------- */
+
+async function renderCheckoutForm(root: HTMLElement): Promise<void> {
+	const host = root.querySelector<HTMLElement>("[data-checkout-host]");
+	if (!host) return;
+	const [cat, me] = await Promise.all([loadCatalog(), whoAmI()]);
+	const online = cat ? (cat.online ?? cat.stripe) : false;
+	const manual = cat?.manualPayment ?? false;
+	const accountsOn = Boolean((cat as { customerAccounts?: boolean } | null)?.customerAccounts);
+	let account: Account | null = null;
+	if (me) account = await accountApi<{ customer: Account }>("account/get").then((r) => r.customer).catch(() => null);
+	const defaultAddr = account?.addresses.find((a) => a.isDefault) ?? account?.addresses[0];
+	const addressPicker = (prefix: string, label: string) =>
+		account && account.addresses.length
+			? `<fieldset class="ec-form-field"><legend class="ec-form-label">${label}</legend><div class="ec-choice-list">${account.addresses.map((a) => `<label class="ec-choice"><input type="radio" name="${prefix}.pick" value="${esc(a.id)}"${a.id === defaultAddr?.id ? " checked" : ""}><span class="ec-choice__label">${esc(a.label || "Address")}<br><small>${esc(formatAddress(a))}</small></span></label>`).join("")}<label class="ec-choice"><input type="radio" name="${prefix}.pick" value="new"><span class="ec-choice__label">New address</span></label></div><div data-new-address="${prefix}" hidden>${addressFormHtml(prefix)}</div></fieldset>`
+			: `<fieldset class="ec-form-field"><legend class="ec-form-label">${label}</legend>${addressFormHtml(prefix)}</fieldset>`;
+	host.innerHTML = `
+		${!me && accountsOn ? `<details class="ec-account__add"><summary>Have an account? Sign in to use saved addresses and cards</summary>${signInFormHtml("/cart")}</details>` : ""}
+		<form class="ec-checkout" data-checkout>
+			${me ? `<p class="ec-form-help">Signed in as ${esc(me.email)}</p>` : `<label class="ec-form-field"><span class="ec-form-label">Email</span><input class="ec-form-input" type="email" name="email" required placeholder="you@example.com" autocomplete="email"></label>`}
+			${addressPicker("shipping", "Shipping address")}
+			<label class="ec-choice ec-choice--single"><input type="checkbox" name="sameBilling" checked><span class="ec-choice__label">Billing address is the same</span></label>
+			<div data-billing hidden>${addressPicker("billing", "Billing address")}</div>
+			${me ? `<label class="ec-choice ec-choice--single"><input type="checkbox" name="saveAddress" checked><span class="ec-choice__label">Save new addresses to my account</span></label>` : ""}
+			${me && account?.paymentMethods.length ? `<fieldset class="ec-form-field"><legend class="ec-form-label">Pay with</legend><div class="ec-choice-list">${account.paymentMethods.map((m, i) => `<label class="ec-choice"><input type="radio" name="paymentMethodId" value="${esc(m.id)}"${i === 0 ? " checked" : ""}><span class="ec-choice__label">${esc(m.brand)} •••• ${esc(m.last4)} <small>(${String(m.expMonth).padStart(2, "0")}/${m.expYear})</small></span></label>`).join("")}<label class="ec-choice"><input type="radio" name="paymentMethodId" value=""><span class="ec-choice__label">Another payment method</span></label></div></fieldset>` : ""}
+			${me && cat?.provider === "stripe" ? `<label class="ec-choice ec-choice--single"><input type="checkbox" name="savePaymentMethod"><span class="ec-choice__label">Save this card to my account for next time (stored by Stripe)</span></label>` : ""}
+			<div class="ec-checkout__actions">
+				<button type="submit" class="ec-form-submit" data-checkout-method="online"${online ? "" : " hidden"}>Pay online</button>
+				<button type="submit" class="ec-form-submit ec-form-submit--secondary" data-checkout-method="manual"${manual ? "" : " hidden"}>Order now, pay later</button>
+			</div>
+			<p class="ec-form-status" data-checkout-status aria-live="polite"></p>
+		</form>`;
+	if (!online && !manual) setStatus(root, "Checkout is not configured yet.", true);
+	wireSignIn(host);
+	const form = host.querySelector<HTMLFormElement>("[data-checkout]")!;
+	form.addEventListener("change", (e) => {
+		const t = e.target as HTMLInputElement;
+		if (t.name === "sameBilling") form.querySelector<HTMLElement>("[data-billing]")!.hidden = t.checked;
+		if (t.name.endsWith(".pick")) {
+			const prefix = t.name.slice(0, -5);
+			const box = form.querySelector<HTMLElement>(`[data-new-address="${prefix}"]`);
+			if (box) box.hidden = t.value !== "new";
+		}
+	});
+	let method = "online";
+	form.querySelectorAll<HTMLButtonElement>("[data-checkout-method]").forEach((b) => b.addEventListener("click", () => (method = b.dataset.checkoutMethod || "online")));
+	form.addEventListener("submit", async (e) => {
+		e.preventDefault();
+		const buttons = form.querySelectorAll<HTMLButtonElement>("button");
+		buttons.forEach((b) => (b.disabled = true));
+		setStatus(root, "Starting checkout…");
+		const pickOrNew = (prefix: string): { id?: string; address?: AccountAddress } => {
+			const pick = (form.elements.namedItem(`${prefix}.pick`) as RadioNodeList | null)?.value;
+			if (pick && pick !== "new") return { id: pick };
+			const a = readAddress(form, prefix);
+			return a.line1 ? { address: a } : {};
+		};
+		const shipping = pickOrNew("shipping");
+		const same = (form.elements.namedItem("sameBilling") as HTMLInputElement | null)?.checked ?? true;
+		const billing = same ? shipping : pickOrNew("billing");
+		const pm = (form.elements.namedItem("paymentMethodId") as RadioNodeList | null)?.value || undefined;
+		const body: Record<string, unknown> = {
+			items: readCart().map(serverLine),
+			method,
+			email: (form.elements.namedItem("email") as HTMLInputElement | null)?.value.trim() || undefined,
+			shippingAddressId: shipping.id,
+			shippingAddress: shipping.address,
+			billingAddressId: billing.id,
+			billingAddress: billing.address,
+			saveAddress: (form.elements.namedItem("saveAddress") as HTMLInputElement | null)?.checked ?? false,
+			paymentMethodId: method === "online" ? pm : undefined,
+			savePaymentMethod: (form.elements.namedItem("savePaymentMethod") as HTMLInputElement | null)?.checked ?? false,
+			cartToken: me ? undefined : cartToken(),
+		};
+		try {
+			const result = me ? await accountApi<{ url: string; orderId: string; number: number; paid?: boolean }>("checkout/account", body) : await api<{ url: string; orderId: string; number: number }>("checkout", { method: "POST", body: JSON.stringify(body) });
+			if (method === "manual" || (result as { paid?: boolean }).paid) clearCart();
+			else sessionStorage.setItem("ec-pending-order", result.orderId);
+			location.assign(result.url);
+		} catch (err) {
+			setStatus(root, err instanceof Error ? err.message : "Checkout failed", true);
+			buttons.forEach((b) => (b.disabled = false));
+		}
+	});
 }
