@@ -23,6 +23,8 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 
 const CSS = `
 .pbx{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;font:14px/1.4 system-ui,sans-serif;color:#1a1a1a}
+.pbx *{box-sizing:border-box}
+.pbx button{color:inherit;text-transform:none;letter-spacing:normal}
 .pbx__win{background:#fff;border-radius:12px;width:min(1100px,96vw);height:min(760px,94vh);display:grid;grid-template-rows:auto 1fr auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35)}
 .pbx__head{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #e5e5e5}
 .pbx__head h2{margin:0;font-size:16px}
@@ -33,19 +35,19 @@ const CSS = `
 .pbx__side{border-inline-start:1px solid #e5e5e5;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px}
 .pbx__side h3{margin:8px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#666}
 .pbx__row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.pbx__btn{font:inherit;padding:6px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer}
+.pbx__btn{font:inherit;font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#1a1a1a;cursor:pointer;line-height:1.2}
 .pbx__btn--primary{background:#111;color:#fff;border-color:#111}
 .pbx__btn[disabled]{opacity:.5;cursor:default}
 .pbx input[type=text],.pbx select,.pbx input[type=number]{font:inherit;padding:5px 8px;border:1px solid #ccc;border-radius:6px;width:100%}
 .pbx input[type=range]{width:100%}
 .pbx__presets{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.pbx__presets button{padding:4px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer}
+.pbx__presets button{padding:4px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;min-height:60px}
 .pbx__presets img{width:100%;aspect-ratio:1;object-fit:contain;display:block}
 .pbx__layers{display:flex;flex-direction:column;gap:4px}
 .pbx__layer{display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid #e5e5e5;border-radius:6px;cursor:pointer;font-size:13px}
 .pbx__layer.is-active{border-color:#111;background:#f7f7f7}
 .pbx__layer span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pbx__layer button{font:inherit;font-size:12px;border:0;background:none;cursor:pointer;color:#666}
+.pbx__layer button{font:inherit;font-size:12px;border:0;background:none;cursor:pointer;color:#666;padding:2px 4px}
 .pbx__colors{display:flex;gap:6px;flex-wrap:wrap}
 .pbx__colors button{width:22px;height:22px;border-radius:50%;border:1px solid #ccc;cursor:pointer}
 .pbx__foot{display:flex;gap:8px;align-items:center;padding:10px 16px;border-top:1px solid #e5e5e5}
