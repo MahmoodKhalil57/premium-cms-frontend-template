@@ -9,6 +9,9 @@
  * fields, honeypot pass-through and Turnstile. Progressive: without JS a
  * pre-rendered form still posts normally.
  */
+import { getDesign, renderField, setDesign } from "./fields";
+import { openDesignStudio } from "./print-builder";
+import type { FormField } from "./fields-model";
 import { CMS_URL } from "../config";
 
 // The platform serves this frontend on the site's own domain(s) (the
@@ -41,49 +44,20 @@ function unwrap<T>(body: unknown): T {
 
 export function renderForm(def: Definition, formId: string): string {
 	const multi = def.pages.length > 1;
-	const attrs = (f: Field) =>
-		[
-			f.required ? "required" : "",
-			f.placeholder ? `placeholder="${esc(f.placeholder)}"` : "",
-			f.validation?.minLength != null ? `minlength="${f.validation.minLength}"` : "",
-			f.validation?.maxLength != null ? `maxlength="${f.validation.maxLength}"` : "",
-			f.validation?.min != null ? `min="${f.validation.min}"` : "",
-			f.validation?.max != null ? `max="${f.validation.max}"` : "",
-			f.validation?.pattern ? `pattern="${esc(f.validation.pattern)}"` : "",
-		].join(" ");
-	const control = (f: Field): string => {
-		const id = `${formId}-${f.name}`;
-		switch (f.type) {
-			case "textarea":
-				return `<textarea class="ec-form-input" id="${id}" name="${esc(f.name)}" ${attrs(f)}>${esc(f.defaultValue ?? "")}</textarea>`;
-			case "select":
-				return `<select class="ec-form-input" id="${id}" name="${esc(f.name)}" ${f.required ? "required" : ""}>${(f.options ?? []).map((o) => `<option value="${esc(o.value)}"${o.value === f.defaultValue ? " selected" : ""}>${esc(o.label)}</option>`).join("")}</select>`;
-			case "radio":
-				return `<fieldset class="ec-form-radio-group" role="radiogroup">${(f.options ?? []).map((o) => `<label class="ec-form-radio-label"><input type="radio" name="${esc(f.name)}" value="${esc(o.value)}"${o.value === f.defaultValue ? " checked" : ""}${f.required ? " required" : ""}> ${esc(o.label)}</label>`).join("")}</fieldset>`;
-			case "checkbox":
-				return `<label class="ec-form-checkbox-label"><input type="checkbox" class="ec-form-input" id="${id}" name="${esc(f.name)}" value="${esc(f.defaultValue || "1")}"${f.required ? " required" : ""}> ${esc(f.label)}</label>`;
-			case "checkbox-group":
-				return `<fieldset class="ec-form-checkbox-group">${(f.options ?? []).map((o) => `<label class="ec-form-checkbox-label"><input type="checkbox" name="${esc(f.name)}" value="${esc(o.value)}"> ${esc(o.label)}</label>`).join("")}</fieldset>`;
-			case "file":
-				return `<input type="file" class="ec-form-input" id="${id}" name="${esc(f.name)}" ${f.required ? "required" : ""} ${f.validation?.accept ? `accept="${esc(f.validation.accept)}"` : ""}>`;
-			default:
-				return `<input type="${esc(f.type)}" class="${f.type === "hidden" ? "" : "ec-form-input"}" id="${id}" name="${esc(f.name)}" value="${esc(f.defaultValue ?? "")}" ${attrs(f)}>`;
-		}
-	};
 	const pages = def.pages
 		.map(
-			(p, i) => `<fieldset class="ec-form-page" data-page="${i}" aria-label="${esc(p.title || `Page ${i + 1}`)}">${multi && p.title ? `<legend class="ec-form-page-title">${esc(p.title)}</legend>` : ""}${p.fields
-				.map(
-					(f) => `<div class="ec-form-field ec-form-field--${esc(f.type)}${f.width === "half" ? " ec-form-field--half" : ""}"${f.condition ? ` data-condition='${esc(JSON.stringify(f.condition))}'` : ""}>${
-						f.type !== "hidden" && f.type !== "checkbox" ? `<label class="ec-form-label" for="${formId}-${esc(f.name)}">${esc(f.label)}${f.required ? ' <span class="ec-form-required" aria-label="required">*</span>' : ""}</label>` : ""
-					}${control(f)}${f.helpText ? `<span class="ec-form-help">${esc(f.helpText)}</span>` : ""}<span class="ec-form-error" data-error-for="${esc(f.name)}" aria-live="polite"></span></div>`,
-				)
-				.join("")}</fieldset>`,
+			(p, i) =>
+				`<fieldset class="ec-form-page" data-page="${i}" aria-label="${esc(p.title || `Page ${i + 1}`)}">${multi && p.title ? `<legend class="ec-form-page-title">${esc(p.title)}</legend>` : ""}${(p.fields as unknown as FormField[])
+					.map((f) => renderField(f, { idPrefix: formId }))
+					.join("")}</fieldset>`,
 		)
 		.join("");
+	// Design fields need their configuration at runtime (the studio); it travels with the form.
+	const designFields = def.pages.flatMap((p) => p.fields as unknown as FormField[]).filter((f) => f.type === "design" && f.design);
+	const designConfigs = designFields.map((f) => `<script type="application/json" data-design-config="${esc(f.name)}">${JSON.stringify(f.design).replace(/</g, "\\u003c")}</script>`).join("");
 	const honeypot = def.settings.spamProtection === "honeypot" ? `<div class="ec-form-field" style="position:absolute;left:-9999px" aria-hidden="true"><label for="${formId}-_hp">Leave blank</label><input type="text" id="${formId}-_hp" name="_hp" tabindex="-1" autocomplete="off"></div>` : "";
 	const turnstile = def.settings.spamProtection === "turnstile" && def._turnstileSiteKey ? `<div class="ec-form-turnstile" data-ec-turnstile data-sitekey="${esc(def._turnstileSiteKey)}"></div>` : "";
-	return `<form class="ec-form" method="POST" action="${BASE}/submit" data-form-id="${esc(formId)}" data-ec-form data-submit-label="${esc(def.settings.submitLabel || "Submit")}">${pages}${honeypot}${turnstile}<input type="hidden" name="formId" value="${esc(formId)}"><div class="ec-form-nav"><button type="submit" class="ec-form-submit">${esc(def.settings.submitLabel || "Submit")}</button></div><div class="ec-form-status" data-form-status aria-live="polite"></div></form>`;
+	return `<form class="ec-form" method="POST" action="${BASE}/submit" data-form-id="${esc(formId)}" data-ec-form data-submit-label="${esc(def.settings.submitLabel || "Submit")}" data-design-fields="${esc(designFields.map((f) => f.name).join(","))}">${pages}${designConfigs}${honeypot}${turnstile}<input type="hidden" name="formId" value="${esc(formId)}"><div class="ec-form-nav"><button type="submit" class="ec-form-submit">${esc(def.settings.submitLabel || "Submit")}</button></div><div class="ec-form-status" data-form-status aria-live="polite"></div></form>`;
 }
 
 /* ---- runtime hydration of placeholders ---- */
@@ -113,7 +87,31 @@ async function hydratePlaceholders() {
 
 /* ---- behaviour ---- */
 
+function initDesignFields(form: HTMLFormElement) {
+	form.addEventListener("click", async (e) => {
+		const t = (e.target as HTMLElement).closest<HTMLElement>("[data-design-open],[data-design-clear]");
+		if (!t) return;
+		e.preventDefault();
+		const name = t.dataset.designOpen ?? t.dataset.designClear!;
+		const cfgEl = form.querySelector<HTMLScriptElement>(`script[data-design-config="${CSS.escape(name)}"]`);
+		if (!cfgEl) return;
+		const summary = form.querySelector<HTMLElement>(`[data-design-summary="${CSS.escape(name)}"]`);
+		if (t.dataset.designClear !== undefined) {
+			setDesign(form, name, null);
+			if (summary) summary.textContent = "";
+			return;
+		}
+		const existing = getDesign(form, name);
+		const result = await openDesignStudio(JSON.parse(cfgEl.textContent || "{}"), existing?.design ?? null, { uploadUrl: `${API}/_emdash/api/plugins/premium-commerce/upload` });
+		if (result) {
+			setDesign(form, name, result);
+			if (summary) summary.innerHTML = `${result.previewDataUrl ? `<img class="ec-design__thumb" src="${result.previewDataUrl}" alt="">` : ""}<span>Design added (${result.design.layers.length} layers)</span> <button type="button" class="ec-link" data-design-open="${esc(name)}">Edit</button> <button type="button" class="ec-link" data-design-clear="${esc(name)}">Remove</button>`;
+		}
+	});
+}
+
 function initForm(form: HTMLFormElement) {
+	if (form.dataset.designFields) initDesignFields(form);
 	if (!form || form.dataset.ecInitialized) return;
 	form.dataset.ecInitialized = "1";
 	evaluateConditions(form);
@@ -156,6 +154,10 @@ async function handleSubmit(e: Event) {
 				seen.add(key);
 				data[key] = val;
 			}
+		}
+		for (const name of (form.dataset.designFields ?? "").split(",").filter(Boolean)) {
+			const d = getDesign(form, name);
+			if (d) data[name] = d.design;
 		}
 		const res = await fetch(form.action, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ formId, data }) });
 		const result = unwrap<{ success?: boolean; message?: string; redirect?: string; errors?: Array<{ field: string; message: string }> }>(await res.json());

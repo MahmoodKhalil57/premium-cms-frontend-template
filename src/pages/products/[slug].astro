@@ -28,7 +28,7 @@ const description = Array.isArray(f.description) ? renderPortableText(f.descript
 			<div class="ec-product__info">
 				<h1>{product.data.title}</h1>
 				<p class="ec-product__price">
-					<span>{formatPrice(f.price as number, STORE_CURRENCY)}</span>
+					<span data-product-price={product.id}>{formatPrice(f.price as number, STORE_CURRENCY)}</span>
 					{f.compare_at_price ? <s>{formatPrice(f.compare_at_price as number, STORE_CURRENCY)}</s> : null}
 				</p>
 				{f.summary ? <p class="ec-product__summary">{f.summary}</p> : null}

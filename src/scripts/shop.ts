@@ -12,6 +12,7 @@
  * (github.io, localhost) use CMS_URL from src/config.ts.
  */
 
+import { collectOptions, initProductOptions } from "./product-options";
 import { CMS_URL } from "../config";
 
 // The platform serves this frontend on the site's own domain(s) (the
@@ -28,8 +29,12 @@ interface CartLine {
 	title: string;
 	price: number;
 	quantity: number;
-	/** Chosen variant options, e.g. { size: "M" }. */
-	options?: Record<string, string>;
+	/** Chosen option values (field name → value). */
+	options?: Record<string, unknown>;
+	/** Labels for the cart summary. */
+	optionsDisplay?: Array<{ label: string; value: string }>;
+	/** Custom print design (previewDataUrl is local only). */
+	customization?: { design: unknown; previewMediaId?: string; previewDataUrl?: string };
 }
 
 interface Catalog {
@@ -62,19 +67,25 @@ function toMinor(price: number): number {
 /* ---- cart state ---------------------------------------------------------- */
 
 /** Identity of a cart line: product + options. */
-export function lineKey(l: { productId: string; options?: Record<string, string> }): string {
+export function lineKey(l: { productId: string; options?: Record<string, unknown>; customization?: { design: unknown } }): string {
 	const o = Object.entries(l.options ?? {})
-		.filter(([, v]) => v)
+		.filter(([, v]) => v !== undefined && v !== "" && v !== false)
 		.sort()
-		.map(([k, v]) => `${k}=${v}`)
+		.map(([k, v]) => `${k}=${Array.isArray(v) ? v.join("/") : String(v)}`)
 		.join("&");
-	return o ? `${l.productId}#${o}` : l.productId;
+	let h = 0;
+	if (l.customization) {
+		const str = JSON.stringify(l.customization.design);
+		for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+	}
+	return `${l.productId}${o ? `#${o}` : ""}${h ? `~${(h >>> 0).toString(36)}` : ""}`;
 }
 
-function optionsText(options?: Record<string, string>): string {
-	return Object.entries(options ?? {})
-		.filter(([, v]) => v)
-		.map(([k, v]) => `${k.charAt(0).toUpperCase()}${k.slice(1)} ${v}`)
+function optionsText(l: CartLine): string {
+	if (l.optionsDisplay?.length) return l.optionsDisplay.map((d) => `${d.label}: ${d.value}`).join(", ");
+	return Object.entries(l.options ?? {})
+		.filter(([, v]) => v !== undefined && v !== "" && v !== false)
+		.map(([k, v]) => `${k.charAt(0).toUpperCase()}${k.slice(1)} ${Array.isArray(v) ? v.join("/") : String(v)}`)
 		.join(", ");
 }
 
@@ -179,19 +190,19 @@ function wireAddToCart(root: ParentNode): void {
 			}
 			const qtyInput = document.querySelector<HTMLInputElement>(`[data-qty-for="${CSS.escape(slug)}"]`);
 			const qty = Math.max(1, Number(qtyInput?.value) || 1);
-			// Variant selects next to the button: [data-option-for="<slug>"][data-option="size"]
-			const options: Record<string, string> = {};
-			let missing: string | null = null;
-			document.querySelectorAll<HTMLSelectElement>(`[data-option-for="${CSS.escape(slug)}"]`).forEach((sel) => {
-				const name = sel.dataset.option || "option";
-				if (sel.value) options[name] = sel.value;
-				else missing ??= name;
-			});
-			if (missing) {
-				flash(btn, `Choose a ${missing}`, true);
+			// Product options rendered on this page (sizes, add-ons, designs) — validated here for feedback, again at checkout.
+			const collected = collectOptions(slug);
+			if (collected && "error" in collected) {
+				flash(btn, collected.error, true);
 				return;
 			}
-			addToCart({ productId, slug, title, price, ...(Object.keys(options).length ? { options } : {}) }, qty);
+			const line: Omit<CartLine, "quantity"> = { productId, slug, title, price: collected ? collected.price : price };
+			if (collected) {
+				if (Object.keys(collected.options).length) line.options = collected.options;
+				if (collected.optionsDisplay.length) line.optionsDisplay = collected.optionsDisplay;
+				if (collected.customization) line.customization = collected.customization;
+			}
+			addToCart(line, qty);
 			flash(btn, "Added ✓");
 		});
 	});
@@ -250,7 +261,7 @@ function renderCart(): void {
 				${lines
 					.map(
 						(l) => `<tr data-line="${esc(lineKey(l))}">
-					<td><a href="${BASE}/products/${esc(l.slug)}">${esc(l.title)}</a>${l.options ? ` <span class="ec-cart__opts">${esc(optionsText(l.options))}</span>` : ""}</td>
+					<td>${l.customization?.previewDataUrl ? `<img class="ec-cart__thumb" src="${l.customization.previewDataUrl}" alt="">` : ""}<a href="${BASE}/products/${esc(l.slug)}">${esc(l.title)}</a>${optionsText(l) ? ` <span class="ec-cart__opts">${esc(optionsText(l))}</span>` : ""}${l.customization && !l.customization.previewDataUrl ? ` <span class="ec-cart__opts">custom design</span>` : ""}</td>
 					<td><input type="number" min="0" value="${l.quantity}" data-line-qty="${esc(lineKey(l))}" aria-label="Quantity for ${esc(l.title)}" /></td>
 					<td>${money(toMinor(l.price) * l.quantity)}</td>
 					<td><button type="button" class="ec-link" data-line-remove="${esc(lineKey(l))}">Remove</button></td>
@@ -302,7 +313,7 @@ function renderCart(): void {
 		try {
 			const result = await api<{ url: string; orderId: string; number: number }>("checkout", {
 				method: "POST",
-				body: JSON.stringify({ items: readCart().map((l) => ({ productId: l.productId, quantity: l.quantity, ...(l.options ? { options: l.options } : {}) })), method, email }),
+				body: JSON.stringify({ items: readCart().map((l) => ({ productId: l.productId, quantity: l.quantity, ...(l.options ? { options: l.options } : {}), ...(l.customization ? { customization: { design: l.customization.design, previewMediaId: l.customization.previewMediaId } } : {}) })), method, email }),
 			});
 			if (method === "manual") clearCart();
 			else sessionStorage.setItem("ec-pending-order", result.orderId);
@@ -385,6 +396,7 @@ async function renderOrder(): Promise<void> {
 if (typeof document !== "undefined") {
 	const boot = () => {
 		renderCount();
+		initProductOptions(`${BASE}/upload`);
 		wireAddToCart(document);
 		void renderAvailability();
 		renderCart();

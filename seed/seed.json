@@ -52,6 +52,11 @@
 					"type": "string"
 				},
 				{
+					"slug": "options",
+					"label": "Options (JSON: fields with price deltas, conditions, per-choice stock, design areas — see the theme README)",
+					"type": "json"
+				},
+				{
 					"slug": "stock",
 					"label": "Stock (blank = unlimited)",
 					"type": "integer"
