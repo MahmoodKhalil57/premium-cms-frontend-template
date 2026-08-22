@@ -12,6 +12,7 @@
  * (github.io, localhost) use CMS_URL from src/config.ts.
  */
 
+import { initBooking } from "./booking";
 import { initCartDrawer, show as showDrawer } from "./cart-drawer";
 import { collectOptions, initProductOptions, setBasePrice } from "./product-options";
 import { type Account, type AccountAddress, addressFormHtml, api as accountApi, formatAddress, initAccount, readAddress, signInFormHtml, whoAmI, wireSignIn } from "./account";
@@ -461,6 +462,7 @@ if (typeof document !== "undefined") {
 		renderCount();
 		initProductOptions(`${BASE}/upload`);
 		initAccount();
+		initBooking();
 		initCartDrawer({ renderLines: (root) => renderCart(root), renderCheckout: (root) => renderCheckoutForm(root), count: cartCount });
 		void adoptServerCart();
 		wireAddToCart(document);
