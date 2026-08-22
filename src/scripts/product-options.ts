@@ -23,7 +23,15 @@ export interface CollectedOptions {
 	price: number;
 }
 
-const registry = new Map<string, { cfg: ProductOptionsConfig; el: HTMLElement }>();
+const registry = new Map<string, { cfg: ProductOptionsConfig; el: HTMLElement; refresh?: () => void }>();
+
+/** Catalog sale prices replace the page's base price (automatic discounts). */
+export function setBasePrice(slug: string, price: number): void {
+	const e = registry.get(slug);
+	if (!e || e.cfg.basePrice === price) return;
+	e.cfg.basePrice = price;
+	e.refresh?.();
+}
 
 function money(currency: string): (n: number) => string {
 	const zero = new Set(["jpy", "krw", "vnd", "clp", "isk", "huf"]);
@@ -63,6 +71,7 @@ export function mountProductOptions(el: HTMLElement, uploadUrl: string): void {
 			if (open) open.hidden = !!d;
 		}
 	};
+	registry.get(cfg.slug)!.refresh = refresh;
 	form.addEventListener("input", refresh);
 	form.addEventListener("change", refresh);
 	form.addEventListener("click", async (e) => {

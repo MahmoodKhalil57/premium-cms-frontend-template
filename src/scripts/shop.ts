@@ -13,7 +13,7 @@
  */
 
 import { initCartDrawer, show as showDrawer } from "./cart-drawer";
-import { collectOptions, initProductOptions } from "./product-options";
+import { collectOptions, initProductOptions, setBasePrice } from "./product-options";
 import { type Account, type AccountAddress, addressFormHtml, api as accountApi, formatAddress, initAccount, readAddress, signInFormHtml, whoAmI, wireSignIn } from "./account";
 import { CMS_URL } from "../config";
 
@@ -49,7 +49,8 @@ interface Catalog {
 	stripe: boolean;
 	/** Shoppers may sign in to save addresses and cards. */
 	customerAccounts?: boolean;
-	products: Array<{ id: string; slug: string; title: string; unitAmount: number; available: number | null }>;
+	products: Array<{ id: string; slug: string; title: string; unitAmount: number; available: number | null; saleUnitAmount?: number; saleLabel?: string }>;
+	hasCoupons?: boolean;
 }
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -279,6 +280,30 @@ function flash(btn: HTMLElement, text: string, error = false): void {
 	}, 1400);
 }
 
+/** Automatic discounts from the catalog: show sale prices on cards and the product page, and price options from the sale price. */
+async function renderSalePrices(): Promise<void> {
+	const cat = await loadCatalog();
+	if (!cat) return;
+	for (const p of cat.products) {
+		const saleMinor = p.saleUnitAmount;
+		if (!saleMinor) continue;
+		const sale = money(saleMinor);
+		const orig = money(p.unitAmount);
+		document.querySelectorAll<HTMLElement>(`.ec-product-card[data-product="${CSS.escape(p.id)}"] .ec-product-card__price`).forEach((el) => {
+			el.innerHTML = `<span>${esc(sale)}</span><s>${esc(orig)}</s><span class="ec-sale-tag">${esc(p.saleLabel ?? "Sale")}</span>`;
+		});
+		const page = document.querySelector<HTMLElement>(`[data-product-price="${CSS.escape(p.slug)}"]`);
+		if (page) {
+			page.textContent = sale;
+			const wrap = page.closest<HTMLElement>(".ec-product__price");
+			if (wrap && !wrap.querySelector(".ec-sale-tag")) wrap.insertAdjacentHTML("beforeend", `<s>${esc(orig)}</s><span class="ec-sale-tag">${esc(p.saleLabel ?? "Sale")}</span>`);
+			setBasePrice(p.slug, saleMinor / (ZERO_DECIMAL.has(currency) ? 1 : 100));
+		}
+		// Add-to-cart buttons carry the list price; switch them to the sale price so the bag matches.
+		document.querySelectorAll<HTMLElement>(`[data-add-to-cart="${CSS.escape(p.slug)}"]`).forEach((b) => (b.dataset.price = String(saleMinor / (ZERO_DECIMAL.has(currency) ? 1 : 100))));
+	}
+}
+
 async function renderAvailability(): Promise<void> {
 	const labels = Array.from(document.querySelectorAll<HTMLElement>("[data-availability]"));
 	if (labels.length === 0) return;
@@ -331,9 +356,15 @@ function renderCart(rootEl?: HTMLElement): void {
 			</tbody>
 			<tfoot><tr><th colspan="2">Subtotal</th><th>${money(subtotal)}</th><td></td></tr></tfoot>
 		</table>
-		<p class="ec-cart__note">Shipping, tax and discounts are calculated at checkout.</p>
+		<div class="ec-coupon" data-coupon>
+			<form class="ec-coupon__form" data-coupon-form><input class="ec-form-input" name="code" placeholder="Discount code" autocomplete="off" value="${esc(couponCode())}"><button type="submit" class="ec-form-submit ec-form-submit--secondary">Apply</button></form>
+			<p class="ec-coupon__status" data-coupon-status aria-live="polite"></p>
+		</div>
+		<p class="ec-cart__note">Shipping and tax are calculated at checkout.</p>
 		${root.closest(".ec-drawer") ? "" : `<div data-checkout-host></div>`}`;
 	if (!root.closest(".ec-drawer")) void renderCheckoutForm(root);
+	wireCoupon(root);
+	void renderDiscountPreview(root);
 	root.querySelectorAll<HTMLInputElement>("[data-line-qty]").forEach((input) => {
 		input.addEventListener("change", () => {
 			setQuantity(input.dataset.lineQty!, Math.max(0, Number(input.value) || 0));
@@ -434,6 +465,7 @@ if (typeof document !== "undefined") {
 		void adoptServerCart();
 		wireAddToCart(document);
 		void renderAvailability();
+		void renderSalePrices();
 		renderCart();
 		void renderOrder();
 		new MutationObserver(() => wireAddToCart(document)).observe(document.body, { childList: true, subtree: true });
@@ -520,6 +552,7 @@ async function renderCheckoutForm(root: HTMLElement): Promise<void> {
 			paymentMethodId: method === "online" ? pm : undefined,
 			savePaymentMethod: (form.elements.namedItem("savePaymentMethod") as HTMLInputElement | null)?.checked ?? false,
 			cartToken: me ? undefined : cartToken(),
+			couponCode: couponCode() || undefined,
 		};
 		try {
 			const result = me ? await accountApi<{ url: string; orderId: string; number: number; paid?: boolean }>("checkout/account", body) : await api<{ url: string; orderId: string; number: number }>("checkout", { method: "POST", body: JSON.stringify(body) });
@@ -531,4 +564,48 @@ async function renderCheckoutForm(root: HTMLElement): Promise<void> {
 			buttons.forEach((b) => (b.disabled = false));
 		}
 	});
+}
+
+
+/* ---- discount codes ------------------------------------------------------- */
+
+const COUPON_KEY = "ec-coupon";
+function couponCode(): string {
+	return localStorage.getItem(COUPON_KEY) ?? "";
+}
+function wireCoupon(root: HTMLElement): void {
+	const form = root.querySelector<HTMLFormElement>("[data-coupon-form]");
+	if (!form) return;
+	form.addEventListener("submit", async (e) => {
+		e.preventDefault();
+		const code = (form.elements.namedItem("code") as HTMLInputElement).value.trim().toUpperCase();
+		if (code) localStorage.setItem(COUPON_KEY, code);
+		else localStorage.removeItem(COUPON_KEY);
+		await renderDiscountPreview(root);
+	});
+}
+/** Ask the server what the bag is worth with automatic discounts and the entered code. */
+async function renderDiscountPreview(root: HTMLElement): Promise<void> {
+	const status = root.querySelector<HTMLElement>("[data-coupon-status]");
+	const lines = readCart();
+	if (!status || lines.length === 0) return;
+	try {
+		const res = await fetch(`${BASE}/discounts/preview`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: lines.map(serverLine), code: couponCode() || undefined }) });
+		const body = (await res.json()) as { success?: boolean; data?: { subtotal: number; discountTotal: number; total: number; coupon: { code: string; title: string; freeShipping: boolean } | null; couponError: string | null }; error?: { message?: string } };
+		if (!res.ok || !body.data) throw new Error(body.error?.message ?? "preview failed");
+		const data = body.data;
+		const foot = root.querySelector<HTMLElement>("tfoot");
+		if (foot) {
+			foot.innerHTML = `${data.discountTotal ? `<tr><th colspan="2">Subtotal</th><th>${money(data.subtotal)}</th><td></td></tr><tr><th colspan="2">Discount${data.coupon ? ` (${esc(data.coupon.code)})` : ""}</th><th>−${money(data.discountTotal)}</th><td></td></tr>` : ""}<tr><th colspan="2">${data.discountTotal ? "Total" : "Subtotal"}</th><th>${money(data.total)}</th><td></td></tr>`;
+		}
+		if (data.couponError && couponCode()) {
+			status.textContent = data.couponError;
+			status.classList.add("ec-form-status--error");
+		} else if (data.coupon) {
+			status.textContent = `${data.coupon.title} applied${data.coupon.freeShipping ? " · free shipping" : ""}`;
+			status.classList.remove("ec-form-status--error");
+		} else status.textContent = "";
+	} catch {
+		/* preview is best effort */
+	}
 }
