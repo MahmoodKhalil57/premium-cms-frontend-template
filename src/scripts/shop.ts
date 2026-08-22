@@ -12,6 +12,7 @@
  * (github.io, localhost) use CMS_URL from src/config.ts.
  */
 
+import { initCartDrawer, show as showDrawer } from "./cart-drawer";
 import { collectOptions, initProductOptions } from "./product-options";
 import { type Account, type AccountAddress, addressFormHtml, api as accountApi, formatAddress, initAccount, readAddress, signInFormHtml, whoAmI, wireSignIn } from "./account";
 import { CMS_URL } from "../config";
@@ -262,6 +263,7 @@ function wireAddToCart(root: ParentNode): void {
 			}
 			addToCart(line, qty);
 			flash(btn, "Added ✓");
+			void showDrawer("bag");
 		});
 	});
 }
@@ -303,8 +305,8 @@ async function renderAvailability(): Promise<void> {
 
 /* ---- cart page ----------------------------------------------------------- */
 
-function renderCart(): void {
-	const root = document.querySelector<HTMLElement>("[data-cart]");
+function renderCart(rootEl?: HTMLElement): void {
+	const root = rootEl?.querySelector<HTMLElement>("[data-cart]") ?? rootEl ?? document.querySelector<HTMLElement>("[data-cart]:not(.ec-drawer [data-cart])");
 	if (!root) return;
 	const lines = readCart();
 	if (lines.length === 0) {
@@ -330,8 +332,8 @@ function renderCart(): void {
 			<tfoot><tr><th colspan="2">Subtotal</th><th>${money(subtotal)}</th><td></td></tr></tfoot>
 		</table>
 		<p class="ec-cart__note">Shipping, tax and discounts are calculated at checkout.</p>
-		<div data-checkout-host></div>`;
-	void renderCheckoutForm(root);
+		${root.closest(".ec-drawer") ? "" : `<div data-checkout-host></div>`}`;
+	if (!root.closest(".ec-drawer")) void renderCheckoutForm(root);
 	root.querySelectorAll<HTMLInputElement>("[data-line-qty]").forEach((input) => {
 		input.addEventListener("change", () => {
 			setQuantity(input.dataset.lineQty!, Math.max(0, Number(input.value) || 0));
@@ -428,6 +430,7 @@ if (typeof document !== "undefined") {
 		renderCount();
 		initProductOptions(`${BASE}/upload`);
 		initAccount();
+		initCartDrawer({ renderLines: (root) => renderCart(root), renderCheckout: (root) => renderCheckoutForm(root), count: cartCount });
 		void adoptServerCart();
 		wireAddToCart(document);
 		void renderAvailability();
@@ -444,6 +447,11 @@ if (typeof document !== "undefined") {
 async function renderCheckoutForm(root: HTMLElement): Promise<void> {
 	const host = root.querySelector<HTMLElement>("[data-checkout-host]");
 	if (!host) return;
+	const summary = root.querySelector<HTMLElement>("[data-cart-summary]");
+	if (summary) {
+		const lines = readCart();
+		summary.innerHTML = `<p class="ec-form-help">${lines.reduce((n, l) => n + l.quantity, 0)} item(s) · subtotal ${money(lines.reduce((n, l) => n + toMinor(l.price) * l.quantity, 0))}</p>`;
+	}
 	const [cat, me] = await Promise.all([loadCatalog(), whoAmI()]);
 	const online = cat ? (cat.online ?? cat.stripe) : false;
 	const manual = cat?.manualPayment ?? false;
