@@ -28,6 +28,8 @@ interface CartLine {
 	title: string;
 	price: number;
 	quantity: number;
+	/** Chosen variant options, e.g. { size: "M" }. */
+	options?: Record<string, string>;
 }
 
 interface Catalog {
@@ -59,6 +61,23 @@ function toMinor(price: number): number {
 
 /* ---- cart state ---------------------------------------------------------- */
 
+/** Identity of a cart line: product + options. */
+export function lineKey(l: { productId: string; options?: Record<string, string> }): string {
+	const o = Object.entries(l.options ?? {})
+		.filter(([, v]) => v)
+		.sort()
+		.map(([k, v]) => `${k}=${v}`)
+		.join("&");
+	return o ? `${l.productId}#${o}` : l.productId;
+}
+
+function optionsText(options?: Record<string, string>): string {
+	return Object.entries(options ?? {})
+		.filter(([, v]) => v)
+		.map(([k, v]) => `${k.charAt(0).toUpperCase()}${k.slice(1)} ${v}`)
+		.join(", ");
+}
+
 export function readCart(): CartLine[] {
 	try {
 		const raw = localStorage.getItem(CART_KEY);
@@ -81,15 +100,15 @@ function writeCart(lines: CartLine[]): void {
 
 export function addToCart(line: Omit<CartLine, "quantity">, quantity = 1): void {
 	const cart = readCart();
-	const existing = cart.find((l) => l.productId === line.productId);
+	const existing = cart.find((l) => lineKey(l) === lineKey(line));
 	if (existing) existing.quantity += quantity;
 	else cart.push({ ...line, quantity });
 	writeCart(cart);
 }
 
-export function setQuantity(productId: string, quantity: number): void {
+export function setQuantity(key: string, quantity: number): void {
 	const cart = readCart()
-		.map((l) => (l.productId === productId ? { ...l, quantity } : l))
+		.map((l) => (lineKey(l) === key ? { ...l, quantity } : l))
 		.filter((l) => l.quantity > 0);
 	writeCart(cart);
 }
@@ -160,7 +179,19 @@ function wireAddToCart(root: ParentNode): void {
 			}
 			const qtyInput = document.querySelector<HTMLInputElement>(`[data-qty-for="${CSS.escape(slug)}"]`);
 			const qty = Math.max(1, Number(qtyInput?.value) || 1);
-			addToCart({ productId, slug, title, price }, qty);
+			// Variant selects next to the button: [data-option-for="<slug>"][data-option="size"]
+			const options: Record<string, string> = {};
+			let missing: string | null = null;
+			document.querySelectorAll<HTMLSelectElement>(`[data-option-for="${CSS.escape(slug)}"]`).forEach((sel) => {
+				const name = sel.dataset.option || "option";
+				if (sel.value) options[name] = sel.value;
+				else missing ??= name;
+			});
+			if (missing) {
+				flash(btn, `Choose a ${missing}`, true);
+				return;
+			}
+			addToCart({ productId, slug, title, price, ...(Object.keys(options).length ? { options } : {}) }, qty);
 			flash(btn, "Added ✓");
 		});
 	});
@@ -218,11 +249,11 @@ function renderCart(): void {
 			<tbody>
 				${lines
 					.map(
-						(l) => `<tr data-line="${esc(l.productId)}">
-					<td><a href="${BASE}/products/${esc(l.slug)}">${esc(l.title)}</a></td>
-					<td><input type="number" min="0" value="${l.quantity}" data-line-qty="${esc(l.productId)}" aria-label="Quantity for ${esc(l.title)}" /></td>
+						(l) => `<tr data-line="${esc(lineKey(l))}">
+					<td><a href="${BASE}/products/${esc(l.slug)}">${esc(l.title)}</a>${l.options ? ` <span class="ec-cart__opts">${esc(optionsText(l.options))}</span>` : ""}</td>
+					<td><input type="number" min="0" value="${l.quantity}" data-line-qty="${esc(lineKey(l))}" aria-label="Quantity for ${esc(l.title)}" /></td>
 					<td>${money(toMinor(l.price) * l.quantity)}</td>
-					<td><button type="button" class="ec-link" data-line-remove="${esc(l.productId)}">Remove</button></td>
+					<td><button type="button" class="ec-link" data-line-remove="${esc(lineKey(l))}">Remove</button></td>
 				</tr>`,
 					)
 					.join("")}
@@ -271,7 +302,7 @@ function renderCart(): void {
 		try {
 			const result = await api<{ url: string; orderId: string; number: number }>("checkout", {
 				method: "POST",
-				body: JSON.stringify({ items: readCart().map((l) => ({ productId: l.productId, quantity: l.quantity })), method, email }),
+				body: JSON.stringify({ items: readCart().map((l) => ({ productId: l.productId, quantity: l.quantity, ...(l.options ? { options: l.options } : {}) })), method, email }),
 			});
 			if (method === "manual") clearCart();
 			else sessionStorage.setItem("ec-pending-order", result.orderId);

@@ -12,9 +12,19 @@ interface Props {
 }
 const { product, label = "Add to cart" } = Astro.props;
 const f = product.data.fields;
+const sizes = (typeof f.sizes === "string" ? f.sizes.split(/[,\n]+/) : Array.isArray(f.sizes) ? (f.sizes as string[]) : []).map((x) => String(x).trim()).filter(Boolean);
 ---
 
 <div class="ec-add-to-cart-row">
+	{sizes.length > 0 && (
+		<label class="ec-size">
+			<span>Size</span>
+			<select data-option-for={product.id} data-option="size" required>
+				<option value="">Choose…</option>
+				{sizes.map((s) => <option value={s}>{s}</option>)}
+			</select>
+		</label>
+	)}
 	<label class="ec-qty">
 		<span>Qty</span>
 		<input type="number" min="1" value="1" data-qty-for={product.id} />

@@ -42,6 +42,16 @@
 					"type": "string"
 				},
 				{
+					"slug": "sizes",
+					"label": "Sizes (comma-separated, e.g. S, M, L, XL — leave empty for one-size products)",
+					"type": "string"
+				},
+				{
+					"slug": "color",
+					"label": "Color",
+					"type": "string"
+				},
+				{
 					"slug": "stock",
 					"label": "Stock (blank = unlimited)",
 					"type": "integer"

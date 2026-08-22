@@ -21,6 +21,8 @@
 					}
 				]
 			}
-		]
+		],
+		"sizes": "S, M, L, XL",
+		"color": "Black"
 	}
 }

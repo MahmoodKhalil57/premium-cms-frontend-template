@@ -213,6 +213,10 @@ const cms = await cmsFragments(Astro, { title: fullTitle, description: pageDescr
 			.ec-add-to-cart, .ec-form-submit--secondary { font: inherit; padding: 0.6rem 1rem; border-radius: 4px; border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; }
 			.ec-add-to-cart[disabled] { opacity: 0.5; cursor: default; }
 			.ec-add-to-cart--error { border-color: #b42318; color: #b42318; }
+			.ec-add-to-cart--link { text-decoration: none; display: inline-block; text-align: center; }
+			.ec-size, .ec-qty { display: inline-flex; align-items: center; gap: 0.5rem; }
+			.ec-size select, .ec-qty input { font: inherit; padding: 0.5rem 0.75rem; border-radius: 4px; border: 1px solid currentColor; background: transparent; color: inherit; }
+			.ec-cart__opts { opacity: 0.7; font-size: 0.875rem; }
 			.ec-qty { display: inline-flex; align-items: center; gap: 0.4rem; }
 			.ec-qty input { width: 4rem; font: inherit; padding: 0.5rem; border: 1px solid currentColor; border-radius: 4px; background: transparent; color: inherit; }
 			.ec-product__layout { display: grid; gap: 2rem; grid-template-columns: 1fr; }
