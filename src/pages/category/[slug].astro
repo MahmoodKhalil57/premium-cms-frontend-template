@@ -30,15 +30,7 @@ const tagsByEntry = await getTermsForEntries("posts", posts.map((p) => p.data.id
 		) : (
 			<div class="posts-grid">
 				{posts.map((post) => (
-					<PostCard
-						title={post.data.title ?? "Untitled"}
-						excerpt={post.data.excerpt}
-						featuredImage={post.data.featured_image}
-						href={`/posts/${post.id}`}
-						date={post.data.publishedAt}
-						readingTime={getReadingTime(post.data.content)}
-						tags={tagsByEntry.get(post.data.id) ?? []}
-					/>
+					<PostCard post={post} tags={tagsByEntry.get(post.data.id) ?? []} />
 				))}
 			</div>
 		)}

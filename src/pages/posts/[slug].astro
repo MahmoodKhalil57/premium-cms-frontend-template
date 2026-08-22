@@ -92,15 +92,7 @@ const otherTags = await getTermsForEntries("posts", otherPosts.map((p) => p.data
 				<h2 class="more-title">Continue reading</h2>
 				<div class="more-grid">
 					{otherPosts.map((p) => (
-						<PostCard
-							title={p.data.title ?? "Untitled"}
-							excerpt={p.data.excerpt}
-							featuredImage={p.data.featured_image}
-							href={`/posts/${p.id}`}
-							date={p.data.publishedAt}
-							readingTime={getReadingTime(p.data.content)}
-							tags={otherTags.get(p.data.id) ?? []}
-						/>
+						<PostCard post={p} tags={otherTags.get(p.data.id) ?? []} />
 					))}
 				</div>
 			</div>
