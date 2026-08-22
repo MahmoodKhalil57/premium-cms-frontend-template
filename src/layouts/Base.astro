@@ -225,6 +225,7 @@ const cms = await cmsFragments(Astro, { title: fullTitle, description: pageDescr
 			.ec-cart__thumb { width: 40px; height: 40px; object-fit: contain; vertical-align: middle; margin-inline-end: 0.5rem; border: 1px solid color-mix(in srgb, currentColor 15%, transparent); border-radius: 4px; background: #fff; }
 			/* Product options (shared field renderer) */
 			.ec-product-options { display: grid; gap: 1rem; margin: 1.25rem 0; }
+			.ec-form-field[hidden], .ec-form [hidden] { display: none !important; }
 			.ec-product-options .ec-form-field--half { grid-column: auto; }
 			.ec-form-label { display: block; font-weight: 600; margin-bottom: 0.35rem; }
 			.ec-price-delta { font-weight: 400; opacity: 0.75; font-size: 0.875em; }
