@@ -26,6 +26,9 @@ const CSS = `
 .ec-drawer__body .ec-cart__table td,.ec-drawer__body .ec-cart__table th{padding:.5rem .25rem;font-size:.9rem}
 .ec-drawer__body .ec-cart__table thead{display:none}
 .ec-drawer__body .ec-cart__table input[type=number]{width:3.5rem}
+.ec-drawer__body .ec-address-form{grid-template-columns:1fr}
+.ec-drawer__body input,.ec-drawer__body select,.ec-drawer__body textarea{box-sizing:border-box;max-width:100%}
+.ec-drawer__body .ec-form-field,.ec-drawer__body fieldset{min-width:0}
 .ec-drawer__foot{padding:1rem 1.25rem;border-top:1px solid var(--color-border-subtle,#eee);display:grid;gap:.5rem}
 .ec-drawer__foot .ec-form-submit{width:100%}
 .ec-drawer__subtotal{display:flex;justify-content:space-between;font-weight:600}
