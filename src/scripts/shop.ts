@@ -5,7 +5,7 @@
  *   into [data-cart-count] markers (usable in page-builder sections)
  * - [data-add-to-cart="<slug>"] buttons anywhere (static pages or sections)
  * - live availability for [data-availability="<productId>"] labels
- * - checkout: POST /checkout → Stripe Checkout (or pay-later) → success page
+ * - checkout: POST /checkout → hosted checkout of the configured provider (Stripe/Polar) or pay-later → success page
  *   confirms via /confirm or /order and renders the receipt into [data-order]
  *
  * The CMS is same-origin on the live domain; off-domain previews
@@ -33,6 +33,10 @@ interface CartLine {
 interface Catalog {
 	currency: string;
 	manualPayment: boolean;
+	/** An online provider (Stripe or Polar) is configured. */
+	online?: boolean;
+	provider?: string;
+	/** Legacy alias of `online`. */
 	stripe: boolean;
 	products: Array<{ id: string; slug: string; title: string; unitAmount: number; available: number | null }>;
 }
@@ -229,7 +233,7 @@ function renderCart(): void {
 		<form class="ec-checkout" data-checkout>
 			<label class="ec-form-field"><span class="ec-form-label">Email</span><input class="ec-form-input" type="email" name="email" required placeholder="you@example.com" /></label>
 			<div class="ec-checkout__actions">
-				<button type="submit" class="ec-form-submit" data-checkout-method="stripe">Pay by card</button>
+				<button type="submit" class="ec-form-submit" data-checkout-method="online">Pay online</button>
 				<button type="submit" class="ec-form-submit ec-form-submit--secondary" data-checkout-method="manual" hidden>Order now, pay later</button>
 			</div>
 			<p class="ec-form-status" data-checkout-status aria-live="polite"></p>
@@ -249,14 +253,15 @@ function renderCart(): void {
 	void loadCatalog().then((cat) => {
 		if (!cat) return;
 		const manual = root.querySelector<HTMLButtonElement>('[data-checkout-method="manual"]');
-		const stripe = root.querySelector<HTMLButtonElement>('[data-checkout-method="stripe"]');
+		const online = root.querySelector<HTMLButtonElement>('[data-checkout-method="online"]');
+		const hasOnline = cat.online ?? cat.stripe;
 		if (manual) manual.hidden = !cat.manualPayment;
-		if (stripe) stripe.hidden = !cat.stripe;
-		if (!cat.stripe && !cat.manualPayment) setStatus(root, "Checkout is not configured yet.", true);
+		if (online) online.hidden = !hasOnline;
+		if (!hasOnline && !cat.manualPayment) setStatus(root, "Checkout is not configured yet.", true);
 	});
 	const form = root.querySelector<HTMLFormElement>("[data-checkout]");
-	let method = "stripe";
-	form?.querySelectorAll<HTMLButtonElement>("[data-checkout-method]").forEach((b) => b.addEventListener("click", () => (method = b.dataset.checkoutMethod || "stripe")));
+	let method = "online";
+	form?.querySelectorAll<HTMLButtonElement>("[data-checkout-method]").forEach((b) => b.addEventListener("click", () => (method = b.dataset.checkoutMethod || "online")));
 	form?.addEventListener("submit", async (e) => {
 		e.preventDefault();
 		const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
