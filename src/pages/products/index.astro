@@ -18,7 +18,7 @@ const rest = products.filter((p) => !p.data.fields.featured);
 		<section class="ec-shop">
 			<header class="ec-shop__header">
 				<h1>Shop</h1>
-				<a class="ec-cart-link" href="/cart">Cart (<span data-cart-count>0</span>)</a>
+				<a class="ec-cart-link" href="/cart">Bag (<span data-cart-count>0</span>)</a>
 			</header>
 			{products.length === 0 ? <p>No products yet.</p> : <div class="ec-product-grid">{[...featured, ...rest].map((product) => <ProductCard product={product} />)}</div>}
 		</section>
